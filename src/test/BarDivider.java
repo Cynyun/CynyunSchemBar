@@ -9,6 +9,8 @@ public class BarDivider extends Element{
 
     @Override
     public void draw(){
-        BarTheme.hline(x, x + width, y + height * 0.5f, 0.16f * parentAlpha);
+        // hline 自己会 +0.5 做像素对齐，这里传元素自身的 y（行高 1px），不要再加 height/2，
+        // 否则线会落在两像素之间发虚。
+        BarTheme.hline(x, x + width, y, 0.16f * parentAlpha);
     }
 }

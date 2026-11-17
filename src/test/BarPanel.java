@@ -8,7 +8,6 @@ import arc.scene.event.InputEvent;
 import arc.scene.event.InputListener;
 import arc.scene.event.Touchable;
 import arc.scene.ui.Button;
-import arc.scene.ui.ButtonGroup;
 import arc.scene.ui.Label;
 import arc.scene.ui.ScrollPane;
 import arc.scene.ui.layout.Table;
@@ -33,6 +32,8 @@ public class BarPanel extends Table{
     private float dragLastX, dragLastY;
 
     private final Label statusLabel, selectedLabel;
+    /** 唯一保留状态的按钮（开关），状态由按钮自己存，面板只读。 */
+    private final BarButton switchBtn;
 
     public BarPanel(){
         // Table 负责子元素布局；关闭变换后 Group.draw 用“父坐标偏移”的方式画子元素，
@@ -57,8 +58,10 @@ public class BarPanel extends Table{
         // ① 普通按钮行：四个等宽按钮，最后一个故意禁用，用来确认禁用态样式
         Table bar = new Table();
         bar.defaults().growX().height(30f).pad(2f);
+        // 一次性按钮：点完恢复常态（默认），只有开关用 stateful(true) 保留选中
         bar.add(new BarButton("+1").onClick(this::onPlus));
-        bar.add(new BarButton("开关").onClick(this::onToggle));
+        switchBtn = new BarButton("开关").stateful(true).onClick(this::onToggle);
+        bar.add(switchBtn);
         bar.add(new BarButton("重置").onClick(this::onReset));
         BarButton disabled = new BarButton("禁用");
         disabled.setDisabled(true);
@@ -72,14 +75,13 @@ public class BarPanel extends Table{
         // ③ 滚轮列表：BarScroll 自带 1px 轨道 + 2px 强调色滑块
         Table list = new Table();
         list.top();
-        // ButtonGroup 做单选：点一个，其余自动取消选中，选中项画强调色框
-        ButtonGroup<BarButton> group = new ButtonGroup<>();
+        // 列表项也是一次性按钮：不保留选中状态，当前选择只体现在下方文字里。
+        // 右侧空间由 BarScroll 统一预留，这里不要再加 padRight，否则会双重内缩。
         for(int i = 1; i <= 12; i++){
             int index = i;
             BarButton item = new BarButton(String.format("[%02d]  蓝图条目 %d", index, index));
             item.onClick(() -> onSelect(index));
-            group.add(item); // group 的 minCheckCount 默认 1，第一项会被自动选中
-            list.add(item).growX().height(28f).padBottom(3f).padRight(6f).row();
+            list.add(item).growX().height(28f).padBottom(3f).row();
         }
         add(new BarScroll(list)).growX().height(128f).padTop(2f).row();
 
@@ -87,7 +89,6 @@ public class BarPanel extends Table{
         selectedLabel = BarTheme.dimText("");
         add(selectedLabel).growX().left().height(16f).row();
 
-        selected = "蓝图条目 1";
         refresh();
         placeAtTopLeft();
     }
@@ -114,7 +115,8 @@ public class BarPanel extends Table{
     }
 
     private void onToggle(){
-        toggled = !toggled;
+        // ChangeEvent 触发时 checked 已经翻转过，直接读按钮状态即可
+        toggled = switchBtn.isChecked();
         refresh();
     }
 
@@ -178,7 +180,9 @@ public class BarPanel extends Table{
     private void dragBy(float dx, float dy){
         float maxX = Math.max(0f, Core.graphics.getWidth() - width);
         float maxY = Math.max(0f, Core.graphics.getHeight() - height);
-        setPosition(Mathf.clamp(x + dx, 0f, maxX), Mathf.clamp(y + dy, 0f, maxY));
+        // 必须落到整数像素：x/y 带小数时，1px 描边和底色会被光栅化到不同像素上，
+        // 看起来就是“一拖动，外框相对底色偏了 1px”。
+        setPosition(Mathf.round(Mathf.clamp(x + dx, 0f, maxX)), Mathf.round(Mathf.clamp(y + dy, 0f, maxY)));
     }
 
     public boolean isDragging(){

@@ -1,5 +1,6 @@
 package test;
 
+import arc.Core;
 import arc.graphics.Color;
 import arc.scene.event.Touchable;
 import arc.scene.ui.Button;
@@ -21,6 +22,8 @@ public class BarButton extends Button{
 
     private final Label label;
     private boolean accent;
+    /** true = 像开关一样保留选中状态；false = 一次性按钮，点完立刻回到常态。 */
+    private boolean stateful;
 
     public BarButton(CharSequence text){
         this(text, false);
@@ -47,13 +50,32 @@ public class BarButton extends Button{
         return this;
     }
 
+    /** 设为 true 后按钮保留选中状态（开关类）；默认 false，点完即恢复。 */
+    public BarButton stateful(boolean stateful){
+        this.stateful = stateful;
+        return this;
+    }
+
+    public boolean isStateful(){
+        return stateful;
+    }
+
     /**
      * 点击回调。内部走 arc 的 ChangeEvent，禁用状态下不会触发。
      * 注意不能重载成 clicked(Runnable)：arc 的 Element 已有同名方法且返回 ClickListener，
      * 这里返回 BarButton 会与它冲突（return type is not compatible）。
      */
     public BarButton onClick(Runnable r){
-        changed(r);
+        changed(() -> {
+            r.run();
+            if(!stateful && isChecked()){
+                // arc 的 Button 每次点击都会把 checked 取反（Button.java:92），一次性按钮必须复位。
+                // 不能在事件里直接 setChecked(false)：setChecked 末尾的
+                // "if(fire(changeEvent)) this.isChecked = !isChecked" 会把复位又翻回去，
+                // 所以放到事件派发结束后，下一帧再清（programmaticChangeEvents 默认 false，不会再触发 ChangeEvent）。
+                Core.app.post(() -> setChecked(false));
+            }
+        });
         return this;
     }
 
@@ -71,7 +93,7 @@ public class BarButton extends Button{
         validate();
 
         float a = parentAlpha;
-        boolean disabled = isDisabled(), over = isOver(), pressed = isPressed(), checked = isChecked();
+        boolean disabled = isDisabled(), over = isOver(), pressed = isPressed(), checked = stateful && isChecked();
 
         // 文字色
         if(disabled){

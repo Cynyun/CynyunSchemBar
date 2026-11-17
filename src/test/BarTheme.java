@@ -64,8 +64,11 @@ public final class BarTheme{
     }
 
     public static void brackets(float x, float y, float w, float h, float len, float alpha){
-        float arm = Math.min(len, Math.min(w * 0.3f, h * 0.45f));
-        if(arm <= 1f){
+        // 和 crisp() 用同一个盒子：四条线都落在“盒子内侧的第一个像素”上。
+        // 直接在 x 上画会让 1px 线跨 [x-0.5, x+0.5]，一半在盒子外——被父级裁剪时就像被切掉一角。
+        float ix = x + 0.5f, iy = y + 0.5f, iw = w - 1f, ih = h - 1f;
+        float arm = Math.min(len, Math.min(iw * 0.3f, ih * 0.45f));
+        if(iw <= 2f || ih <= 2f || arm <= 1f){
             frame(x, y, w, h, alpha);
             return;
         }
@@ -73,32 +76,37 @@ public final class BarTheme{
         Draw.color(1f, 1f, 1f, alpha);
         Lines.stroke(LINE);
         // 左下
-        Lines.line(x, y + arm, x, y);
-        Lines.line(x, y, x + arm, y);
+        Lines.line(ix, iy + arm, ix, iy);
+        Lines.line(ix, iy, ix + arm, iy);
         // 右下
-        Lines.line(x + w, y + arm, x + w, y);
-        Lines.line(x + w, y, x + w - arm, y);
+        Lines.line(ix + iw, iy + arm, ix + iw, iy);
+        Lines.line(ix + iw, iy, ix + iw - arm, iy);
         // 左上
-        Lines.line(x, y + h - arm, x, y + h);
-        Lines.line(x, y + h, x + arm, y + h);
+        Lines.line(ix, iy + ih - arm, ix, iy + ih);
+        Lines.line(ix, iy + ih, ix + arm, iy + ih);
         // 右上
-        Lines.line(x + w, y + h - arm, x + w, y + h);
-        Lines.line(x + w, y + h, x + w - arm, y + h);
+        Lines.line(ix + iw, iy + ih - arm, ix + iw, iy + ih);
+        Lines.line(ix + iw, iy + ih, ix + iw - arm, iy + ih);
     }
 
     /** 强调色的四角括号。 */
     public static void bracketsAccent(float x, float y, float w, float h, float alpha){
-        float arm = Math.min(BRACKET, Math.min(w * 0.3f, h * 0.45f));
+        float ix = x + 0.5f, iy = y + 0.5f, iw = w - 1f, ih = h - 1f;
+        float arm = Math.min(BRACKET, Math.min(iw * 0.3f, ih * 0.45f));
+        if(iw <= 2f || ih <= 2f){
+            frameAccent(x, y, w, h, alpha);
+            return;
+        }
         Draw.color(accent.r, accent.g, accent.b, alpha);
         Lines.stroke(LINE);
-        Lines.line(x, y + arm, x, y);
-        Lines.line(x, y, x + arm, y);
-        Lines.line(x + w, y + arm, x + w, y);
-        Lines.line(x + w, y, x + w - arm, y);
-        Lines.line(x, y + h - arm, x, y + h);
-        Lines.line(x, y + h, x + arm, y + h);
-        Lines.line(x + w, y + h - arm, x + w, y + h);
-        Lines.line(x + w, y + h, x + w - arm, y + h);
+        Lines.line(ix, iy + arm, ix, iy);
+        Lines.line(ix, iy, ix + arm, iy);
+        Lines.line(ix + iw, iy + arm, ix + iw, iy);
+        Lines.line(ix + iw, iy, ix + iw - arm, iy);
+        Lines.line(ix, iy + ih - arm, ix, iy + ih);
+        Lines.line(ix, iy + ih, ix + arm, iy + ih);
+        Lines.line(ix + iw, iy + ih - arm, ix + iw, iy + ih);
+        Lines.line(ix + iw, iy + ih, ix + iw - arm, iy + ih);
     }
 
     /** 水平分隔线。 */
