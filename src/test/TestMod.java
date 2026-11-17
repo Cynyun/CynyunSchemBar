@@ -24,7 +24,7 @@ public class TestMod extends Mod{
 
             // 窗口尺寸变化：贴边的继续贴边，自由态的按比例跟随。用 Core.graphics 而不是
             // hudGroup 的宽高——后者要等下一次布局才更新，事件里读到的还是旧尺寸。
-            Events.on(ResizeEvent.class, e -> {
+            Events.on(ResizeEvent.class, ev -> {
                 if(panel.parent != null) panel.applyLayout();
             });
         });
