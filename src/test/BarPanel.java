@@ -154,7 +154,7 @@ public class BarPanel extends Table{
             @Override
             public void touchDragged(InputEvent event, float x, float y, int pointer){
                 if(!dragging) return;
-                moveBy(event.stageX - dragLastX, event.stageY - dragLastY);
+                dragBy(event.stageX - dragLastX, event.stageY - dragLastY);
                 dragLastX = event.stageX;
                 dragLastY = event.stageY;
             }
@@ -175,7 +175,7 @@ public class BarPanel extends Table{
     }
 
     /** 按增量移动，并夹在屏幕内，避免被拖到看不见的地方。 */
-    private void moveBy(float dx, float dy){
+    private void dragBy(float dx, float dy){
         float maxX = Math.max(0f, Core.graphics.getWidth() - width);
         float maxY = Math.max(0f, Core.graphics.getHeight() - height);
         setPosition(Mathf.clamp(x + dx, 0f, maxX), Mathf.clamp(y + dy, 0f, maxY));
