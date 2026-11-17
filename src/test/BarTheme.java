@@ -10,8 +10,8 @@ import mindustry.ui.Styles;
 /**
  * 本项目的视觉语言：不用任何贴图/九宫格底图，只用 1px 线 + 极淡的填充。
  *
- * 设计文档要求悬浮窗“尽量少遮挡游戏画面”，所以这里刻意做成“线框 + 透明底”：
- * 常态只有四角括号，悬停/按下/选中才逐步加亮加填充，信息量集中在文字上。
+ * 颜色在这里是“活”的：BarConfig 从 config.json 读到的值会写进这几个 Color 实例，
+ * 设置窗里的取色器直接改实例本身，所以所有已经画出来的元素下一帧就是新颜色。
  * 以后要改整套观感（换色、换粗细、换角标长度）只动这个类。
  */
 public final class BarTheme{
@@ -21,23 +21,42 @@ public final class BarTheme{
     /** 四角括号的默认臂长（px）。 */
     public static final float BRACKET = 7f;
 
-    /** 强调色：选中态、滚动条滑块、标题。 */
+    /** 强调色：选中态、滚动条滑块、标题、滑条已填充段。 */
     public static final Color accent = Color.valueOf("7fd7e8");
     /** 次要文字色。 */
     public static final Color dim = Color.valueOf("9fb0b6");
+    /** 线框色（窗口边、分隔线、滑条轨道）。 */
+    public static final Color line = Color.valueOf("ffffff");
+    /** 主文字色。 */
+    public static final Color text = Color.valueOf("ffffff");
+    /** 窗口底色。 */
+    public static final Color panel = Color.valueOf("000000");
+
+    /** 窗口底色不透明度（0-1），设置窗滑条实时改，随 config.json 持久化。 */
+    public static float panelOpacity = 0.40f;
 
     private BarTheme(){
     }
 
+    /** 恢复出厂颜色，由 BarConfig.defaults() 调用。 */
+    public static void resetDefaults(){
+        accent.set(Color.valueOf("7fd7e8"));
+        dim.set(Color.valueOf("9fb0b6"));
+        line.set(Color.valueOf("ffffff"));
+        text.set(Color.valueOf("ffffff"));
+        panel.set(Color.valueOf("000000"));
+        panelOpacity = 0.40f;
+    }
+
     /** 极淡底色（左下角语义，走 Fill.crect；Fill.rect 是中心语义，别混用）。 */
     public static void fill(float x, float y, float w, float h, float alpha){
-        Draw.color(0f, 0f, 0f, alpha);
+        Draw.color(panel.r, panel.g, panel.b, alpha);
         Fill.crect(x, y, w, h);
     }
 
-    /** 完整矩形描边，白色。加 0.5 偏移让 1px 线正好落在一像素上，不发虚。 */
+    /** 完整矩形描边。加 0.5 偏移让 1px 线正好落在一像素上，不发虚。 */
     public static void frame(float x, float y, float w, float h, float alpha){
-        Draw.color(1f, 1f, 1f, alpha);
+        Draw.color(line.r, line.g, line.b, alpha);
         Lines.stroke(LINE);
         crisp(x, y, w, h);
     }
@@ -73,7 +92,7 @@ public final class BarTheme{
             return;
         }
 
-        Draw.color(1f, 1f, 1f, alpha);
+        Draw.color(line.r, line.g, line.b, alpha);
         Lines.stroke(LINE);
         // 左下
         Lines.line(ix, iy + arm, ix, iy);
@@ -111,29 +130,53 @@ public final class BarTheme{
 
     /** 水平分隔线。 */
     public static void hline(float x1, float x2, float y, float alpha){
-        Draw.color(1f, 1f, 1f, alpha);
+        Draw.color(line.r, line.g, line.b, alpha);
         Lines.stroke(LINE);
         Lines.line(x1, y + 0.5f, x2, y + 0.5f);
     }
 
-    /** 白色文字。每个 Label 都持有自己的 LabelStyle 副本，避免共享样式被别处改色。 */
-    public static Label text(CharSequence s){
-        return styled(s, 1f, 1f, 1f, 0.92f);
+    /** 主文字。 */
+    public static BarLabel text(CharSequence s){
+        return new BarLabel(s, 0);
     }
 
     /** 强调色文字。 */
-    public static Label accentText(CharSequence s){
-        return styled(s, accent.r, accent.g, accent.b, 1f);
+    public static BarLabel accentText(CharSequence s){
+        return new BarLabel(s, 1);
     }
 
     /** 次要文字。 */
-    public static Label dimText(CharSequence s){
-        return styled(s, dim.r, dim.g, dim.b, 0.85f);
+    public static BarLabel dimText(CharSequence s){
+        return new BarLabel(s, 2);
     }
 
-    private static Label styled(CharSequence s, float r, float g, float b, float a){
-        Label label = new Label(s, new Label.LabelStyle(Styles.defaultLabel));
-        label.setColor(r, g, b, a);
-        return label;
+    /**
+     * 会跟着调色板自动变色的 Label。
+     *
+     * 不能只在创建时 setColor：设置窗换色后，屏幕上已有的标题/说明会保持旧色。
+     * 在 draw() 里按 kind 重新取色，代价只有一次 Color.set，可忽略。
+     */
+    public static class BarLabel extends Label{
+        private final int kind;
+        private float alpha = 1f;
+
+        BarLabel(CharSequence s, int kind){
+            super(s, new Label.LabelStyle(Styles.defaultLabel));
+            this.kind = kind;
+        }
+
+        /** 整体再乘一个 alpha（0-1），用于禁用/次要层级。 */
+        public BarLabel alpha(float alpha){
+            this.alpha = alpha;
+            return this;
+        }
+
+        @Override
+        public void draw(){
+            Color c = kind == 1 ? BarTheme.accent : kind == 2 ? BarTheme.dim : BarTheme.text;
+            float base = kind == 1 ? 1f : kind == 2 ? 0.85f : 0.92f;
+            color.set(c.r, c.g, c.b, base * alpha);
+            super.draw();
+        }
     }
 }

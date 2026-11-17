@@ -70,7 +70,7 @@ public class BarScroll extends ScrollPane{
         if(trackH <= 8f) return;
 
         // 轨道
-        Draw.color(1f, 1f, 1f, 0.12f * a);
+        Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, 0.12f * a);
         Lines.stroke(1f);
         Lines.line(trackX, bottom, trackX, top);
 

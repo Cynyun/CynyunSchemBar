@@ -97,13 +97,13 @@ public class BarButton extends Button{
 
         // 文字色
         if(disabled){
-            label.color.set(1f, 1f, 1f, 0.28f);
+            label.color.set(BarTheme.text.r, BarTheme.text.g, BarTheme.text.b, 0.28f);
         }else if(checked || accent){
             label.color.set(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, 1f);
         }else if(over){
-            label.color.set(Color.white);
+            label.color.set(BarTheme.text.r, BarTheme.text.g, BarTheme.text.b, 1f);
         }else{
-            label.color.set(1f, 1f, 1f, 0.88f);
+            label.color.set(BarTheme.text.r, BarTheme.text.g, BarTheme.text.b, 0.88f);
         }
 
         // 底色：只在不悬停/不按下时保持几乎全透明
