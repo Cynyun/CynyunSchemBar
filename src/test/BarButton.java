@@ -47,8 +47,12 @@ public class BarButton extends Button{
         return this;
     }
 
-    /** 点击回调。内部走 arc 的 ChangeEvent，禁用状态下不会触发。 */
-    public BarButton clicked(Runnable r){
+    /**
+     * 点击回调。内部走 arc 的 ChangeEvent，禁用状态下不会触发。
+     * 注意不能重载成 clicked(Runnable)：arc 的 Element 已有同名方法且返回 ClickListener，
+     * 这里返回 BarButton 会与它冲突（return type is not compatible）。
+     */
+    public BarButton onClick(Runnable r){
         changed(r);
         return this;
     }

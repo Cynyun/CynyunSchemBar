@@ -45,9 +45,9 @@ public class BarPanel extends Table{
         // ① 普通按钮行：四个等宽按钮，最后一个故意禁用，用来确认禁用态样式
         Table bar = new Table();
         bar.defaults().growX().height(30f).pad(2f);
-        bar.add(new BarButton("+1").clicked(this::onPlus));
-        bar.add(new BarButton("开关").clicked(this::onToggle));
-        bar.add(new BarButton("重置").clicked(this::onReset));
+        bar.add(new BarButton("+1").onClick(this::onPlus));
+        bar.add(new BarButton("开关").onClick(this::onToggle));
+        bar.add(new BarButton("重置").onClick(this::onReset));
         BarButton disabled = new BarButton("禁用");
         disabled.setDisabled(true);
         bar.add(disabled);
@@ -65,7 +65,7 @@ public class BarPanel extends Table{
         for(int i = 1; i <= 12; i++){
             int index = i;
             BarButton item = new BarButton(String.format("[%02d]  蓝图条目 %d", index, index));
-            item.clicked(() -> onSelect(index));
+            item.onClick(() -> onSelect(index));
             group.add(item); // group 的 minCheckCount 默认 1，第一项会被自动选中
             list.add(item).growX().height(28f).padBottom(3f).padRight(6f).row();
         }
