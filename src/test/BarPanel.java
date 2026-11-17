@@ -35,9 +35,12 @@ public class BarPanel extends WidgetGroup{
 
     @Override
     public void draw(){
-        // 半透明底色
+        // 半透明底色。
+        // 注意：arc 里 Fill.rect 的 (x, y) 是矩形中心（内部走 Draw.rect，会减掉 w/2、h/2），
+        // 而 Lines.rect 的 (x, y) 是左下角。要给一个元素铺底色必须用 crect（corner rect），
+        // 否则底色会整体偏移半个宽高，与描边错位。
         Draw.color(0f, 0f, 0f, 0.45f);
-        Fill.rect(x, y, width, height);
+        Fill.crect(x, y, width, height);
 
         // 1px 描边，方便确认边界
         Draw.color(1f, 1f, 1f, 0.35f);
