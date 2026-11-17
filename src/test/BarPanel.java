@@ -1,9 +1,16 @@
 package test;
 
 import arc.Core;
+import arc.input.KeyCode;
+import arc.math.Mathf;
+import arc.scene.Element;
+import arc.scene.event.InputEvent;
+import arc.scene.event.InputListener;
 import arc.scene.event.Touchable;
+import arc.scene.ui.Button;
 import arc.scene.ui.ButtonGroup;
 import arc.scene.ui.Label;
+import arc.scene.ui.ScrollPane;
 import arc.scene.ui.layout.Table;
 
 /**
@@ -21,6 +28,10 @@ public class BarPanel extends Table{
     private boolean toggled;
     private String selected = "无";
 
+    /** 拖动状态：只有按住面板自身的空白处才会进入。位置只存在内存里，重启游戏回到初始位置。 */
+    private boolean dragging;
+    private float dragLastX, dragLastY;
+
     private final Label statusLabel, selectedLabel;
 
     public BarPanel(){
@@ -29,9 +40,10 @@ public class BarPanel extends Table{
         setTransform(false);
         setSize(WIDTH, HEIGHT);
 
-        // 面板空白处不接收点击（不影响建造），但子元素要能接收，所以是 childrenOnly。
-        // 注意不能用 disabled：Group.hit 开头就会因为 disabled 直接返回 null，子按钮全部点不到。
-        touchable = Touchable.childrenOnly;
+        // 必须是 enabled：childrenOnly 会让 Element.hit 在空白处直接返回 null，事件到不了面板，
+        // 拖动就无从谈起。代价是面板矩形内的空白处不再允许穿透建造——悬浮窗本来也不该穿透。
+        touchable = Touchable.enabled;
+        installDrag();
 
         margin(12f);
         defaults().pad(3f);
@@ -120,5 +132,56 @@ public class BarPanel extends Table{
     private void refresh(){
         statusLabel.setText("点击次数：" + clicks + "    开关：" + (toggled ? "开" : "关"));
         selectedLabel.setText("当前选择：" + selected);
+    }
+
+    // ------------------------------------------------------------------ 拖动
+
+    /** 装上拖动监听。事件由命中的子元素冒泡上来，这里只判断它是不是“交互件”。 */
+    private void installDrag(){
+        addListener(new InputListener(){
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                if(pointer != 0 || button != KeyCode.mouseLeft) return false;
+                if(isInteractive(event.targetActor)) return false;
+
+                // 用 stage 坐标的“增量”移动，不去换算父坐标：hudGroup 若带缩放/偏移，增量依然成立
+                dragging = true;
+                dragLastX = event.stageX;
+                dragLastY = event.stageY;
+                return true; // 返回 true 后 Scene 会 addTouchFocus，鼠标拖出面板也能继续收 move 事件
+            }
+
+            @Override
+            public void touchDragged(InputEvent event, float x, float y, int pointer){
+                if(!dragging) return;
+                moveBy(event.stageX - dragLastX, event.stageY - dragLastY);
+                dragLastX = event.stageX;
+                dragLastY = event.stageY;
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
+                dragging = false;
+            }
+        });
+    }
+
+    /** 命中的元素只要在按钮 / 滚动区里（含其子元素），就算交互件，不触发拖动。 */
+    private boolean isInteractive(Element target){
+        for(Element e = target; e != null && e != this; e = e.parent){
+            if(e instanceof Button || e instanceof ScrollPane) return true;
+        }
+        return false;
+    }
+
+    /** 按增量移动，并夹在屏幕内，避免被拖到看不见的地方。 */
+    private void moveBy(float dx, float dy){
+        float maxX = Math.max(0f, Core.graphics.getWidth() - width);
+        float maxY = Math.max(0f, Core.graphics.getHeight() - height);
+        setPosition(Mathf.clamp(x + dx, 0f, maxX), Mathf.clamp(y + dy, 0f, maxY));
+    }
+
+    public boolean isDragging(){
+        return dragging;
     }
 }

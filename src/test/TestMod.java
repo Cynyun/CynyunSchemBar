@@ -3,7 +3,6 @@ package test;
 import arc.Events;
 import mindustry.Vars;
 import mindustry.game.EventType.ClientLoadEvent;
-import mindustry.game.EventType.ResizeEvent;
 import mindustry.mod.Mod;
 
 /**
@@ -22,8 +21,8 @@ public class TestMod extends Mod{
             Vars.ui.hudGroup.addChild(panel);
             panel.toFront();
 
-            // 窗口尺寸变化时重新贴左上角
-            Events.on(ResizeEvent.class, r -> panel.placeAtTopLeft());
+            // 位置只在拖动时变化：窗口尺寸变化后的自动调整以后再做，现在不挂 ResizeEvent，
+            // 否则拖过的面板会在改窗口大小时被拉回左上角。
         });
     }
 }
