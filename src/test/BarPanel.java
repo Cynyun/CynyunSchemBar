@@ -46,7 +46,7 @@ public class BarPanel extends Table{
         touchable = Touchable.enabled;
         installDrag();
 
-        margin(12f);
+        margin(10f);
         defaults().pad(3f);
         top(); // 剩余空间留在底部，避免内容整体垂直居中后与描边不齐
 
@@ -103,7 +103,7 @@ public class BarPanel extends Table{
         float a = parentAlpha;
         // 面板底色比按钮浓一点，但也只有 40%，不遮挡战场
         BarTheme.fill(x, y, width, height, 0.40f * a);
-        BarTheme.frame(x, y, width, height, 0.45f * a);
+        BarTheme.frame(x, y, width + 1f, height + 1f, 0.45f * a); // 增加一单位 确保右侧上侧边框能包住
 
         // 交给 Table 画子元素（validate + 布局 + 绘制）
         super.draw();
