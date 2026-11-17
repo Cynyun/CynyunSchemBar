@@ -19,7 +19,7 @@ public class TestMod extends Mod{
             BarPanel panel = new BarPanel();
 
             // hudGroup 为 childrenOnly，且只在游戏中可见
-            Vars.ui.hudGroup.add(panel);
+            Vars.ui.hudGroup.addChild(panel);
             panel.toFront();
 
             // 窗口尺寸变化时重新贴左上角

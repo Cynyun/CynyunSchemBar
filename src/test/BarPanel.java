@@ -4,7 +4,7 @@ import arc.Core;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.graphics.g2d.Lines;
-import arc.scene.Touchable;
+import arc.scene.event.Touchable;
 import arc.scene.ui.layout.WidgetGroup;
 
 /**
