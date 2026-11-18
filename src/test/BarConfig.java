@@ -22,10 +22,6 @@ public final class BarConfig{
     public static final int VERSION = 1;
     public static final String FOLDER = "cynyun-schembar", FILE = "config.json";
 
-    /** 界面设置。 */
-    public static int maxVisibleCategories = 4;
-    public static boolean hideOnUse = true, hoverPreview = true;
-
     /** 测试页的真数据（设置窗要显示，顺带验证持久化链路）。 */
     public static int clicks;
     /** 上次选择的蓝图条目序号，1 起；-1 = 还没选过。 */
@@ -62,9 +58,6 @@ public final class BarConfig{
             Jval s = root.get("settings");
             if(s != null){
                 BarTheme.panelOpacity = Mathf.clamp(s.getFloat("opacity", BarTheme.panelOpacity), 0.3f, 1f);
-                maxVisibleCategories = Mathf.clamp(s.getInt("maxVisibleCategories", maxVisibleCategories), 1, 10);
-                hideOnUse = s.getBool("hideOnUse", hideOnUse);
-                hoverPreview = s.getBool("hoverPreview", hoverPreview);
 
                 Jval c = s.get("colors");
                 if(c != null){
@@ -120,9 +113,6 @@ public final class BarConfig{
 
             Jval s = Jval.newObject();
             s.put("opacity", (double)BarTheme.panelOpacity);
-            s.put("maxVisibleCategories", maxVisibleCategories);
-            s.put("hideOnUse", hideOnUse);
-            s.put("hoverPreview", hoverPreview);
 
             Jval c = Jval.newObject();
             c.put("accent", hex(BarTheme.accent));
@@ -186,9 +176,6 @@ public final class BarConfig{
     /** 恢复出厂：颜色、开关、测试数据、两个窗口的位置全部清空。 */
     public static void defaults(){
         BarTheme.resetDefaults();
-        maxVisibleCategories = 4;
-        hideOnUse = true;
-        hoverPreview = true;
         clicks = 0;
         selected = -1;
         resetWindow(mainWindow);

@@ -7,18 +7,19 @@ import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
 
 /**
- * 设置浮窗：颜色 / 界面 / 实时数据三段，风格与主面板一致（半透明 + 线框）。
+ * 设置浮窗：颜色 + 实时数据两段，风格与主面板一致（半透明 + 线框）。
+ *
+ * 测试阶段只留真正生效的项：没有实现的开关/滑条不放上来，免得点了没反应。
  *
  * 颜色改动即时生效（取色器直接改 BarTheme 的 Color 实例），点“关闭”时才整体写盘；
  * 拖动窗口结束也会写盘，所以关掉游戏再进来位置不会丢。
  */
 public class BarSettingsWindow extends BarWindow{
 
-    public static final float WIDTH = 400f, HEIGHT = 384f;
+    public static final float WIDTH = 400f, HEIGHT = 304f;
 
-    private BarSlider opacitySlider, maxSlider;
-    private Label opacityValue, maxValue;
-    private BarCheckbox useToggle, hoverToggle;
+    private BarSlider opacitySlider;
+    private Label opacityValue;
     private BarButton resetBtn;
 
     private Label clickLabel, selectLabel;
@@ -52,7 +53,7 @@ public class BarSettingsWindow extends BarWindow{
         colorRow("面板底色", BarTheme.panel);
 
         Table op = new Table();
-        op.add(BarTheme.dimText("不透明度")).width(64f).left();
+        op.add(BarTheme.dimText("不透明度")).width(120f).left();
         opacitySlider = new BarSlider(30f, 100f, Mathf.round(BarTheme.panelOpacity * 100f));
         opacityValue = BarTheme.text(Mathf.round(BarTheme.panelOpacity * 100f) + "%");
         opacityValue.touchable = arc.scene.event.Touchable.disabled;
@@ -63,30 +64,6 @@ public class BarSettingsWindow extends BarWindow{
         op.add(opacitySlider).growX().height(16f).padLeft(2f).padRight(6f);
         op.add(opacityValue).width(34f).right();
         add(op).growX().height(18f).row();
-
-        // ---------------------------------------------------------------- 界面
-        add(BarTheme.accentText("· 界面")).growX().left().height(15f).padTop(2f).row();
-
-        Table mx = new Table();
-        mx.add(BarTheme.dimText("最大可见栏目")).width(84f).left();
-        maxSlider = new BarSlider(1f, 10f, BarConfig.maxVisibleCategories);
-        maxValue = BarTheme.text(Integer.toString(BarConfig.maxVisibleCategories));
-        maxValue.touchable = arc.scene.event.Touchable.disabled;
-        maxSlider.changed = () -> {
-            BarConfig.maxVisibleCategories = Mathf.round(maxSlider.value());
-            maxValue.setText(Integer.toString(BarConfig.maxVisibleCategories));
-        };
-        mx.add(maxSlider).growX().height(16f).padLeft(2f).padRight(6f);
-        mx.add(maxValue).width(34f).right();
-        add(mx).growX().height(18f).row();
-
-        useToggle = new BarCheckbox("使用后隐藏面板", BarConfig.hideOnUse);
-        useToggle.changed = () -> BarConfig.hideOnUse = useToggle.checked();
-        add(useToggle).growX().left().height(18f).row();
-
-        hoverToggle = new BarCheckbox("悬停显示预览", BarConfig.hoverPreview);
-        hoverToggle.changed = () -> BarConfig.hoverPreview = hoverToggle.checked();
-        add(hoverToggle).growX().left().height(18f).row();
 
         // ---------------------------------------------------------------- 实时数据
         add(BarTheme.accentText("· 实时数据")).growX().left().height(15f).padTop(2f).row();
@@ -128,7 +105,7 @@ public class BarSettingsWindow extends BarWindow{
         field.openPicker = () -> TestMod.openPicker(field);
 
         Table row = new Table();
-        row.add(BarTheme.dimText(title)).width(64f).left();
+        row.add(BarTheme.dimText(title)).width(100f).left();
         row.add(field).growX().height(18f).padLeft(2f);
         add(row).growX().height(18f).row();
     }
@@ -160,12 +137,6 @@ public class BarSettingsWindow extends BarWindow{
     public void sync(){
         opacitySlider.setValueSilent(Mathf.round(BarTheme.panelOpacity * 100f));
         opacityValue.setText(Mathf.round(BarTheme.panelOpacity * 100f) + "%");
-
-        maxSlider.setValueSilent(BarConfig.maxVisibleCategories);
-        maxValue.setText(Integer.toString(BarConfig.maxVisibleCategories));
-
-        useToggle.setChecked(BarConfig.hideOnUse);
-        hoverToggle.setChecked(BarConfig.hoverPreview);
 
         resetArmed = false;
         resetTimer = 0f;

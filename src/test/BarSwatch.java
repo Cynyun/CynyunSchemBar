@@ -28,7 +28,7 @@ public class BarSwatch extends Element{
 
         Draw.color(1f, 1f, 1f, 0.55f * a);
         Lines.stroke(1f);
-        Lines.rect(x + 0.5f, y + 0.5f, width - 1f, height - 1f);
+        Lines.rect(x + 0.5f, y + 0.5f, width - 0.5f, height - 0.5f);
 
         Draw.reset();
     }

@@ -20,7 +20,7 @@ import arc.scene.ui.layout.Table;
  */
 public class BarColorPicker extends BarWindow{
 
-    public static final float WIDTH = 236f, HEIGHT = 232f;
+    public static final float WIDTH = 236f, HEIGHT = 212f;
 
     private static final String[] PRESETS = {
         "ffffff", "c8d0d4", "9fb0b6", "6b7378", "000000", "7fd7e8", "4aa6d8", "3f6ee0",

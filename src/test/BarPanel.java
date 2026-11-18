@@ -32,7 +32,8 @@ public class BarPanel extends BarWindow{
         // 标题行：右侧是“设置”瞬时按钮（不保存状态）
         Table head = new Table();
         head.add(BarTheme.accentText("C Y N Y U N   ·   S C H E M B A R")).growX().left();
-        head.add(new BarButton("设置").onClick(TestMod::openSettings)).size(46f, 18f);
+        // 无边框入口按钮：常态不画任何东西，悬停才浮出一层极淡底色
+        head.add(new BarButton("⚙").borderless(true).onClick(TestMod::openSettings)).size(22f, 18f);
         add(head).growX().height(20f).row();
 
         add(BarTheme.dimText("UI 组件测试：线框按钮 / 自绘滚动条")).growX().left().height(16f).row();

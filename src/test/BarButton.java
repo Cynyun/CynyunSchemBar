@@ -5,25 +5,41 @@ import arc.graphics.Color;
 import arc.scene.event.Touchable;
 import arc.scene.ui.Button;
 import arc.scene.ui.Label;
+import arc.scene.ui.layout.Cell;
 import arc.util.Align;
 import mindustry.ui.Styles;
 
 /**
  * 自定义按钮：没有底图，全部由 {@link BarTheme} 的线画出来。
  *
- * 状态 → 外观：
+ * 两种样式，状态 → 外观：
+ *
+ * 线框（默认）
  *   常态    只有四角括号（alpha 0.35），几乎不遮挡画面
  *   悬停    括号变亮 + 极淡填充
  *   按下    完整白框 + 更浓填充
  *   选中    完整强调色框 + 强调色文字（配合 ButtonGroup 做单选）
- *   禁用    括号更暗、文字半透明，且点击无效
+ *
+ * 无边框（{@link #borderless(boolean)}）
+ *   常态    什么都不画，只有文字
+ *   悬停    极淡暗底（与 × 关闭按钮同亮度）
+ *   按下    更浓的暗底
+ *   选中    极淡强调色底 + 强调色文字，开关状态仍然看得出来
+ *
+ * 两种样式都支持 stateful（保留选中）/ 一次性（点完复原）与禁用。
  */
 public class BarButton extends Button{
 
     private final Label label;
+    private final Cell<Label> labelCell;
     private boolean accent;
     /** true = 像开关一样保留选中状态；false = 一次性按钮，点完立刻回到常态。 */
     private boolean stateful;
+    /**
+     * true = 无边框样式：不画任何线，只有指针悬停/按下/选中时用极淡底色高亮。
+     * 用在标题行这类“功能入口”按钮上（⚙、×），不抢内容的视觉重心。
+     */
+    private boolean borderless;
 
     public BarButton(CharSequence text){
         this(text, false);
@@ -37,8 +53,8 @@ public class BarButton extends Button{
 
         label = new Label(text, new Label.LabelStyle(Styles.defaultLabel));
         label.setAlignment(Align.center);
-        // 左右留出 8px，否则文字会顶到四角括号的竖臂上
-        add(label).grow().pad(2f, 8f, 2f, 8f);
+        // 左右留出 8px，否则文字会顶到四角括号的竖臂上（无边框时会收紧，见 borderless()）
+        labelCell = add(label).grow().pad(2f, 8f, 2f, 8f);
 
         touchable = Touchable.enabled;
         setSize(getPrefWidth(), getPrefHeight());
@@ -58,6 +74,21 @@ public class BarButton extends Button{
 
     public boolean isStateful(){
         return stateful;
+    }
+
+    /** 无边框样式：只靠悬停/按下/选中的底色提示，不画四角括号。 */
+    public BarButton borderless(boolean borderless){
+        this.borderless = borderless;
+        // 没有括号要躲，内边距收回 5px，否则窄按钮里文字会被挤歪
+        labelCell.pad(1f, 5f, 1f, 5f);
+        // 改了 cell 的 pad 就要重算尺寸，否则未显式 size() 的按钮会留着旧的最小宽度
+        invalidateHierarchy();
+        setSize(getPrefWidth(), getPrefHeight());
+        return this;
+    }
+
+    public boolean isBorderless(){
+        return borderless;
     }
 
     /**
@@ -104,6 +135,20 @@ public class BarButton extends Button{
             label.color.set(BarTheme.text.r, BarTheme.text.g, BarTheme.text.b, 1f);
         }else{
             label.color.set(BarTheme.text.r, BarTheme.text.g, BarTheme.text.b, 0.88f);
+        }
+
+        if(borderless){
+            // 无边框：常态完全不画东西，只有交互反馈。
+            // 选中态给一层极淡强调色底，否则用户看不出开关是开的。
+            if(!disabled){
+                if(checked) BarTheme.fillAccent(x, y, width, height, 0.14f * a);
+                // 数值与 BarCloseButton（×）对齐，两种无边框按钮悬停亮度一致
+                float highlight = pressed ? 0.28f : over ? 0.16f : 0f;
+                if(highlight > 0f) BarTheme.fill(x, y, width, height, highlight * a);
+            }
+            // 没有线要压在文字上，直接画子元素即可
+            super.draw();
+            return;
         }
 
         // 底色：只在不悬停/不按下时保持几乎全透明

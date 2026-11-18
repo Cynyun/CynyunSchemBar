@@ -54,6 +54,12 @@ public final class BarTheme{
         Fill.crect(x, y, w, h);
     }
 
+    /** 强调色铺底（无边框按钮的选中态）。 */
+    public static void fillAccent(float x, float y, float w, float h, float alpha){
+        Draw.color(accent.r, accent.g, accent.b, alpha);
+        Fill.crect(x, y, w, h);
+    }
+
     /** 完整矩形描边。加 0.5 偏移让 1px 线正好落在一像素上，不发虚。 */
     public static void frame(float x, float y, float w, float h, float alpha){
         Draw.color(line.r, line.g, line.b, alpha);
