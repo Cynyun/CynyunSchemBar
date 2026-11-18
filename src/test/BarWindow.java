@@ -64,6 +64,9 @@ public abstract class BarWindow extends Table{
                 if(pointer != 0 || button != KeyCode.mouseLeft) return false;
                 if(isInteractive(event.targetActor)) return false;
 
+                // 点击后的 ui 位于上方
+                toFront();
+
                 // 用 stage 坐标的“增量”移动，不去换算父坐标：hudGroup 若带缩放/偏移，增量依然成立
                 dragging = true;
                 dragLastX = event.stageX;
