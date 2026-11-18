@@ -13,7 +13,7 @@ import arc.scene.ui.layout.Table;
 public class BarPanel extends BarWindow{
 
     /** 面板尺寸与边距，先用常量，后续由设置项驱动。 */
-    public static final float WIDTH = 360f, HEIGHT = 300f, MARGIN = 24f, TOP_OFFSET = 72f;
+    public static final float WIDTH = 360f, HEIGHT = 300f, MARGIN = 24f, TOP_OFFSET = 24f;
 
     /** 唯一保留状态的按钮（开关），状态由按钮自己存，面板只读。 */
     private final BarButton switchBtn;

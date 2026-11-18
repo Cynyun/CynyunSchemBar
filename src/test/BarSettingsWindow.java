@@ -16,7 +16,7 @@ import arc.scene.ui.layout.Table;
  */
 public class BarSettingsWindow extends BarWindow{
 
-    public static final float WIDTH = 400f, HEIGHT = 304f;
+    public static final float WIDTH = 400f, HEIGHT = 296f;
 
     private BarSlider opacitySlider;
     private Label opacityValue;
@@ -53,7 +53,7 @@ public class BarSettingsWindow extends BarWindow{
         colorRow("面板底色", BarTheme.panel);
 
         Table op = new Table();
-        op.add(BarTheme.dimText("不透明度")).width(120f).left();
+        op.add(BarTheme.dimText("不透明度")).width(100f).left();
         opacitySlider = new BarSlider(30f, 100f, Mathf.round(BarTheme.panelOpacity * 100f));
         opacityValue = BarTheme.text(Mathf.round(BarTheme.panelOpacity * 100f) + "%");
         opacityValue.touchable = arc.scene.event.Touchable.disabled;
@@ -95,8 +95,8 @@ public class BarSettingsWindow extends BarWindow{
     @Override
     protected void defaultSpawn(){
         float w = Core.graphics.getWidth(), h = Core.graphics.getHeight();
-        // 默认贴右边（留 12px 呼吸空间），垂直居中；12 > SNAP，所以初始是自由态
-        setPosition(Mathf.round(Math.max(0f, w - width - 12f)), Mathf.round(Math.max(0f, (h - height) / 2f)));
+        // 默认屏幕正中；离四边都远大于 SNAP，所以初始是自由态
+        setPosition(Mathf.round(Math.max(0f, (w - width) / 2f)), Mathf.round(Math.max(0f, (h - height) / 2f)));
     }
 
     /** 一行颜色字段：左侧固定宽度的名字，右侧可点击的色块 + hex。 */
