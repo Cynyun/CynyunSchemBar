@@ -60,6 +60,8 @@ public class BarSchematicPicker extends BarWindow{
     private float hoverTime, hideTime, pollTime;
 
     private int shownLibrary = -1, shownTagCount = -1;
+    /** 当前网格排了几列。列数变了才重建卡片，拖动缩放时不至于每像素重建一次。 */
+    private int columns = -1;
 
     public BarSchematicPicker(BarSlotWindow slot){
         super(sessionW, sessionH);
@@ -99,8 +101,9 @@ public class BarSchematicPicker extends BarWindow{
         add(new BarScroll(chips, true)).growX().height(26f).row();
 
         // ---------------------------------------------------------------- 卡片网格
-        // Table 自己会在宽度不够时换行，所以窗口变宽变窄都不用重建卡片
-        grid.left().top();
+        // Table 不会自己换行：它的列是逐格 add 出来的，放在 ScrollPane 里宽度还会取“一整行的
+        // pref”，所以必须按窗口宽度自己算列数、拆行（原版蓝图界面也是这么做的）。
+        grid.top();
         grid.defaults().pad(CARD_PAD);
         add(new BarScroll(grid)).grow().row();
 
@@ -123,6 +126,15 @@ public class BarSchematicPicker extends BarWindow{
 
         rebuildChips();
         rebuildCards();
+
+        // 内容一律裁到窗口内（Table 自己支持裁剪），保证任何情况下都不会画到窗口外面去
+        setClip(true);
+    }
+
+    /** 当前宽度下能排几列。滚动条宽度由 BarScroll 预留，这里要一起减掉。 */
+    private int columnsFor(){
+        float avail = getWidth() - getMarginLeft() - getMarginRight() - BarScroll.BAR_WIDTH;
+        return Math.max(1, (int)Math.floor(avail / (CARD_W + CARD_PAD * 2f)));
     }
 
     @Override
@@ -263,6 +275,7 @@ public class BarSchematicPicker extends BarWindow{
         grid.clearChildren();
         shownLibrary = libraryCount();
         shownTagCount = allTags().size();
+        columns = columnsFor();
 
         List<Schematic> list = filtered();
         countLabel.setText("共 " + shownLibrary + " 张 · 显示 " + list.size() + " 张");
@@ -273,6 +286,7 @@ public class BarSchematicPicker extends BarWindow{
             return;
         }
 
+        int index = 0;
         for(Schematic s : list){
             BarSchematicCard card = new BarSchematicCard(s);
             card.setSelected(s == slot.bound());
@@ -294,6 +308,8 @@ public class BarSchematicPicker extends BarWindow{
             card.onInfo(() -> showPopup(card, true));
 
             grid.add(card).size(CARD_W, CARD_H);
+            // 满一列就换行；最后一张不换，免得网格尾部多出一行空高度
+            if(++index < list.size() && index % columns == 0) grid.row();
         }
     }
 
@@ -377,6 +393,9 @@ public class BarSchematicPicker extends BarWindow{
     @Override
     public void act(float delta){
         super.act(delta);
+
+        // 拖右下角缩放 / 切分辨率后列数变了，重排一次卡片
+        if(shownLibrary >= 0 && columnsFor() != columns) rebuildCards();
 
         // 搜索词统一在这里读：粘贴、清空、中文输入法都能覆盖，不必依赖 TextField 的回调时机
         String cur = search.text();

@@ -36,6 +36,13 @@ public class BarSlotWindow extends BarWindow{
     private BarSchematicPicker picker;
     private BarSchematicInfoWindow info;
 
+    /** 悬停预览的浮层（非编辑态才有）、计时。 */
+    private BarSchematicInfoPopup preview;
+    private float hoverTime, hideTime;
+
+    /** 悬停多久弹出预览、离开多久收起。 */
+    private static final float HOVER_DELAY = 0.5f, HIDE_DELAY = 0.2f;
+
     public BarSlotWindow(){
         super(200f, 36f);
         margin(6f, 8f, 6f, 8f);
@@ -82,8 +89,9 @@ public class BarSlotWindow extends BarWindow{
     }
 
     public void setBound(Schematic s){
-        // 解绑时信息窗失去意义，先关掉再改状态
+        // 解绑时信息窗/预览失去意义，先关掉再改状态
         if(s == null) closeInfo();
+        hidePreview();
         bound = s;
         alias = null;
         refresh();
@@ -107,6 +115,9 @@ public class BarSlotWindow extends BarWindow{
     // ------------------------------------------------------------------ 交互
 
     private void onAction(){
+        // 点下去要么用蓝图、要么开窗口，浮在上面的预览先收掉
+        hidePreview();
+
         if(bound != null && !isBound()){
             // 库里已经没有这张蓝图了，静默退回“未绑定”
             setBound(null);
@@ -178,6 +189,57 @@ public class BarSlotWindow extends BarWindow{
         }
     }
 
+    // ------------------------------------------------------------------ 悬停预览
+
+    /**
+     * 只有“点按钮会直接用掉蓝图”的状态才需要预览：编辑态点按钮开的是信息窗，再叠一层反而碍事。
+     * 指针停在槽位按钮上 0.5 秒弹出，离开 0.2 秒收起；手机没有悬停，用编辑开关看信息。
+     */
+    @Override
+    public void act(float delta){
+        super.act(delta);
+
+        boolean allowed = bound != null && isBound() && !editing && picker == null && info == null;
+        if(!allowed){
+            hoverTime = 0f;
+            hidePreview();
+            return;
+        }
+
+        if(BarTheme.pointerOver(action) || (preview != null && BarTheme.pointerOver(preview))){
+            hideTime = 0f;
+            hoverTime += delta;
+            if(preview == null && hoverTime >= HOVER_DELAY) showPreview();
+        }else{
+            hoverTime = 0f;
+            hideTime += delta;
+            if(preview != null && hideTime >= HIDE_DELAY) hidePreview();
+        }
+    }
+
+    private void showPreview(){
+        if(bound == null || Vars.ui == null || Vars.ui.hudGroup == null) return;
+
+        preview = new BarSchematicInfoPopup(bound, false);
+        Vars.ui.hudGroup.addChild(preview);
+
+        // 优先放窗口右侧，右边放不下翻到左侧；竖直方向与窗口底边对齐后夹进屏幕
+        float w = preview.getWidth(), h = preview.getHeight();
+        float px = x + getWidth() + 8f;
+        if(px + w > Core.graphics.getWidth()) px = Math.max(0f, x - w - 8f);
+        float py = Mathf.clamp(y + getHeight() - h, 0f, Math.max(0f, Core.graphics.getHeight() - h));
+
+        preview.setPosition(Mathf.round(px), Mathf.round(py));
+        preview.toFront();
+    }
+
+    private void hidePreview(){
+        if(preview != null){
+            preview.hide();
+            preview = null;
+        }
+    }
+
     // ------------------------------------------------------------------ 布局
 
     /** 默认贴在主面板正下方，跟着面板左上角走。 */
@@ -191,7 +253,16 @@ public class BarSlotWindow extends BarWindow{
     public void resetToDefault(){
         closePicker();
         closeInfo();
+        hidePreview();
         super.resetToDefault();
+    }
+
+    @Override
+    public boolean remove(){
+        hidePreview();
+        closePicker();
+        closeInfo();
+        return super.remove();
     }
 
     /** 窗口尺寸变化：自己先重排，再把两个子窗口带一遍（它们的位置依赖槽位窗）。 */
