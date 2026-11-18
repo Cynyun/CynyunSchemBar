@@ -16,7 +16,7 @@ import arc.scene.ui.layout.Table;
 public class BarPanel extends BarWindow{
 
     /** 面板尺寸与边距，先用常量，后续由设置项驱动。 */
-    public static final float WIDTH = 360f, HEIGHT = 300f, MARGIN = 24f, TOP_OFFSET = 24f;
+    public static final float WIDTH = 384f, HEIGHT = 300f, MARGIN = 24f, TOP_OFFSET = 24f;
 
     /** 面板名字：展开态在标题行，收起态是窄条上唯一的文字。 */
     private static final String TITLE = "C Y N Y U N   ·   S C H E M B A R";

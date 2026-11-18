@@ -91,6 +91,12 @@ public class BarButton extends Button{
         return borderless;
     }
 
+    /** 文字过长时用省略号截断。只在按钮拿到有限宽度时生效（窗口把宽度封顶的场景）。 */
+    public BarButton ellipsis(boolean ellipsis){
+        label.setEllipsis(ellipsis);
+        return this;
+    }
+
     /**
      * 点击回调。内部走 arc 的 ChangeEvent，禁用状态下不会触发。
      * 注意不能重载成 clicked(Runnable)：arc 的 Element 已有同名方法且返回 ClickListener，
