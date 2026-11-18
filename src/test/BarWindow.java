@@ -95,7 +95,7 @@ public abstract class BarWindow extends Table{
     /** 命中的元素只要在交互件里（含其子元素），就不触发拖动。 */
     private boolean isInteractive(Element target){
         for(Element e = target; e != null && e != this; e = e.parent){
-            if(e instanceof Button || e instanceof ScrollPane || e instanceof BarControl) return true;
+            if(e instanceof Button || e instanceof ScrollPane || e instanceof BarControl || e instanceof BarResizeGrip) return true;
         }
         return false;
     }

@@ -28,10 +28,21 @@ public class BarScroll extends ScrollPane{
     /** 内容区必须为滚动条预留的宽度：滑块 2 + 轨道 1 + 两侧各约 1.5 的呼吸空间。 */
     public static final float BAR_WIDTH = 6f;
 
+    /** 是否横向滚动（标签行这种一排 chips 的用）。 */
+    private final boolean horizontal;
+
     public BarScroll(Element content){
+        this(content, false);
+    }
+
+    /**
+     * @param horizontal true = 横向滚动，滚动条画在底边，内容预留的是下方而不是右侧空间
+     */
+    public BarScroll(Element content, boolean horizontal){
         // 把内容包一层再交给 ScrollPane，预留宽度做进组件，调用方不需要记得加 padRight。
-        super(reserve(content), Styles.noBarPane);
-        setScrollingDisabled(true, false); // 只允许纵向，横向交给外层
+        super(reserve(content, horizontal), Styles.noBarPane);
+        this.horizontal = horizontal;
+        setScrollingDisabled(!horizontal, horizontal); // 只允许一个方向
         setFadeScrollBars(false);
         setOverscroll(false, false);       // 不要橡皮筋回弹，边滚边停更利落
 
@@ -48,16 +59,39 @@ public class BarScroll extends ScrollPane{
         });
     }
 
-    /** 内容 + 右侧预留空间的包装层。 */
-    private static Element reserve(Element content){
+    /** 内容 + 滚动条预留空间的包装层。 */
+    private static Element reserve(Element content, boolean horizontal){
         Table table = new Table();
-        table.add(content).grow().padRight(BAR_WIDTH);
+        if(horizontal) table.add(content).grow().padBottom(BAR_WIDTH);
+        else table.add(content).grow().padRight(BAR_WIDTH);
         return table;
+    }
+
+    /**
+     * 最小值必须很小。
+     *
+     * WidgetGroup.getMinHeight() 默认返回 pref，也就是“整段内容的完整高度”。放进固定高度的
+     * 窗口里时，Table 会认为这一行最少要这么高，于是把下面的行全部挤出窗口。
+     * 滚动区本来就该被压扁，所以这里按“能滚就行”给一个最小值。
+     */
+    @Override
+    public float getMinHeight(){
+        return 32f;
+    }
+
+    @Override
+    public float getMinWidth(){
+        return 32f;
     }
 
     @Override
     public void draw(){
         super.draw();
+
+        if(horizontal){
+            drawHorizontal();
+            return;
+        }
 
         // 内容没有溢出就不画滚动条，避免面板右边多出一条没意义的竖线
         if(getMaxY() <= 1f || width <= 8f || height <= 12f) return;
@@ -84,6 +118,32 @@ public class BarScroll extends ScrollPane{
         Draw.color(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, 0.8f * a);
         Lines.stroke(THUMB);
         Lines.line(trackX, thumbY, trackX, thumbY + thumbH);
+
+        Draw.reset();
+    }
+
+    /** 横向滚动条：一条贴底的横线 + 强调色滑块。 */
+    private void drawHorizontal(){
+        if(getMaxX() <= 1f || height <= 8f) return;
+
+        float a = parentAlpha;
+        float trackY = y + INSET;
+        float left = x + 4f, right = x + width - 4f;
+        float trackW = right - left;
+        if(trackW <= 8f) return;
+
+        Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, 0.12f * a);
+        Lines.stroke(1f);
+        Lines.line(left, trackY, right, trackY);
+
+        float content = width + getMaxX();
+        float frac = content <= width ? 1f : Mathf.clamp(width / content, 0.08f, 1f);
+        float thumbW = Math.max(8f, trackW * frac);
+        float thumbX = left + (trackW - thumbW) * getVisualScrollPercentX();
+
+        Draw.color(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, 0.8f * a);
+        Lines.stroke(THUMB);
+        Lines.line(thumbX, trackY, thumbX + thumbW, trackY);
 
         Draw.reset();
     }
