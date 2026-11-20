@@ -82,7 +82,10 @@ public class BarPanel extends BarWindow{
         content.add(inputRow("侧标", sideField)).growX().height(24f).row();
 
         inputEcho = BarTheme.dimText("");
-        content.add(inputEcho).growX().left().height(16f).row();
+        // minWidth(0) 是保险：Label 的 min 宽默认等于文字宽（Label.java:231-233），
+        // 一旦回显里塞进长文本，整张 content 表的最小宽度就会被它顶大，所有行一起变宽。
+        inputEcho.setEllipsis(true);
+        content.add(inputEcho).growX().left().height(16f).minWidth(0f).row();
 
         content.add(new BarDivider()).growX().height(1f).padTop(2f).padBottom(6f).row();
 
@@ -187,12 +190,14 @@ public class BarPanel extends BarWindow{
         if(changed) updateEcho();
     }
 
+    /**
+     * 回显只报字数，不回显内容本身。
+     * 之前把整段文字拼进这一个 Label，Label 的 min 宽 = 文字宽（Label.java:231-233），
+     * content 表的最小宽度被顶到近千像素，于是所有行都按那个宽度排、文字画到面板外，
+     * 而 TextField 也跟着拿到近千像素的宽度，自然就不需要“向左隐藏”了。
+     */
     private void updateEcho(){
-        inputEcho.setText("输入回显：" + echo(shownUnderline) + "   ·   " + echo(shownSide));
-    }
-
-    private static String echo(String s){
-        return s.isEmpty() ? "（空）" : s;
+        inputEcho.setText("输入回显：底线 " + shownUnderline.length() + " 字 · 侧标 " + shownSide.length() + " 字");
     }
 
     /** 清空两个输入框；下一帧 act() 会把空串写回 Core.settings。 */
