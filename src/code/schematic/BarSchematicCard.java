@@ -7,7 +7,9 @@ import arc.scene.event.InputListener;
 import arc.scene.event.Touchable;
 import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
+import arc.Core;
 import arc.util.Align;
+import arc.util.Time;
 import mindustry.game.Schematic;
 import mindustry.ui.Styles;
 import mindustry.ui.dialogs.SchematicsDialog;
@@ -43,9 +45,19 @@ public class BarSchematicCard extends Table{
     private final Label name;
 
     private boolean selected, over;
+
+    /** 触摸端没有“悬停”，长按 0.5 秒代替。 */
+    private static final float LONG_PRESS = 0.5f;
+    /** 长按之后这么久内的点击只当“看详情”，不绑定。 */
+    private static final float LONG_GUARD = 0.8f;
+
+    private boolean touchOver, longFired;
+    private float touchTime;
+    private float longAt = -100f;
+
     private final ClickListener click;
 
-    private Runnable onClick, onHover, onUnhover;
+    private Runnable onClick, onHover, onUnhover, onLongPress;
 
     public BarSchematicCard(Schematic schem){
         this.schem = schem;
@@ -75,6 +87,8 @@ public class BarSchematicCard extends Table{
         click = new ClickListener(){
             @Override
             public void clicked(InputEvent event, float x, float y){
+                // 长按松手后还会补一个 click，这一下别当成“选中这张蓝图”
+                if(Time.time - longAt < LONG_GUARD) return;
                 if(onClick != null) onClick.run();
             }
         };
@@ -84,14 +98,22 @@ public class BarSchematicCard extends Table{
         addListener(new InputListener(){
             @Override
             public void enter(InputEvent event, float x, float y, int pointer, Element fromActor){
-                if(pointer != -1 || over) return;
+                if(pointer != -1){
+                    touchOver = true;
+                    return;
+                }
+                if(over) return;
                 over = true;
                 if(onHover != null) onHover.run();
             }
 
             @Override
             public void exit(InputEvent event, float x, float y, int pointer, Element toActor){
-                if(pointer != -1 || !over) return;
+                if(pointer != -1){
+                    if(!inside(toActor)) touchOver = false;
+                    return;
+                }
+                if(!over) return;
                 // 移到自己的子元素（名字、标签）上不算离开
                 if(inside(toActor)) return;
                 over = false;
@@ -142,6 +164,28 @@ public class BarSchematicCard extends Table{
 
     public void onUnhover(Runnable r){
         onUnhover = r;
+    }
+
+    /** 触摸端长按。和 onHover 分开：长按要立刻出浮层，不用等悬停延时。 */
+    public void onLongPress(Runnable r){
+        onLongPress = r;
+    }
+
+    @Override
+    public void act(float delta){
+        super.act(delta);
+
+        if(touchOver && Core.input.isTouched()){
+            touchTime += delta;
+            if(!longFired && touchTime >= LONG_PRESS){
+                longFired = true;
+                longAt = Time.time;
+                if(onLongPress != null) onLongPress.run();
+            }
+        }else{
+            touchTime = 0f;
+            longFired = false;
+        }
     }
 
     /** 指针是否停在卡片上（含子元素）。由 enter/exit 维护，每帧读它零成本。 */

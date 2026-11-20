@@ -46,7 +46,7 @@ public class BarSchematicPicker extends BarWindow{
     private static String sessionSearch = "";
     private static final Seq<String> selectedTags = new Seq<>();
 
-    private final BarSlot slot;
+    private final BarPickerHost host;
 
     private final Table grid = new Table(), chips = new Table();
     private final BarTextField search;
@@ -74,9 +74,9 @@ public class BarSchematicPicker extends BarWindow{
         return BarConfig.pickerHeight > 0f ? BarConfig.pickerHeight : DEFAULT_H;
     }
 
-    public BarSchematicPicker(BarSlot slot){
+    public BarSchematicPicker(BarPickerHost host){
         super(storedW(), storedH());
-        this.slot = slot;
+        this.host = host;
 
         margin(8f);
         defaults().pad(2f);
@@ -331,10 +331,10 @@ public class BarSchematicPicker extends BarWindow{
         int index = 0;
         for(Schematic s : list){
             BarSchematicCard card = new BarSchematicCard(s);
-            card.setSelected(s == slot.bound());
+            card.setSelected(s == host.currentSchematic());
 
             // 绑定由槽位窗负责，它会在 picked() 里顺手把这个选择窗关掉
-            card.onClick(() -> slot.picked(s));
+            card.onClick(() -> host.picked(s));
 
             card.onHover(() -> {
                 hoverCard = card;
@@ -345,6 +345,13 @@ public class BarSchematicPicker extends BarWindow{
             card.onUnhover(() -> {
                 if(hoverCard == card) hoverCard = null;
                 if(popup != null) hideTime = HIDE_DELAY;
+            });
+
+            // 触摸端：长按立刻出详情（松手后由 act 里的 isTouched 判断收起）
+            card.onLongPress(() -> {
+                hoverCard = card;
+                hideTime = 0f;
+                showPopup(card);
             });
 
             grid.add(card).size(CARD_W, CARD_H);
@@ -478,7 +485,8 @@ public class BarSchematicPicker extends BarWindow{
             boolean overCard = hoverCard != null && hoverCard.parent != null && hoverCard.isOver();
 
             if(overPopup) hideTime = HIDE_DELAY;
-            else if(!overCard && hideTime <= 0f) hidePopup();
+            // 手指还按着就留着：触摸端没有悬停状态，一松手才收
+            else if(!overCard && !Core.input.isTouched() && hideTime <= 0f) hidePopup();
         }
 
         if(popup != null && popup.parent == null) popup = null;
@@ -491,7 +499,7 @@ public class BarSchematicPicker extends BarWindow{
     }
 
     private void close(){
-        slot.closePicker();
+        host.closePicker();
     }
 
     @Override

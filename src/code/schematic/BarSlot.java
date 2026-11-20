@@ -22,7 +22,7 @@ import mindustry.game.Schematic;
  *
  * 它自己是面板里的普通表格，位置由父表决定；只有选择窗/信息窗/预览浮层是挂在 hudGroup 上的窗口。
  */
-public class BarSlot extends Table{
+public class BarSlot extends Table implements BarPickerHost{
 
     /** 槽位按钮的最小宽度：够放“未绑定”和常见的蓝图名。 */
     public static final float ACTION_MIN = 132f;
@@ -150,12 +150,19 @@ public class BarSlot extends Table{
         setBound(null);
     }
 
+    /** 选择窗里用来高亮“当前这张”。 */
+    @Override
+    public Schematic currentSchematic(){
+        return bound;
+    }
+
     /** 蓝图可能被原版界面删掉，每次使用前重新确认它在库里。 */
     private boolean isBound(){
         return bound != null && Vars.schematics != null && Vars.schematics.all().contains(bound);
     }
 
     /** 选择窗里点了一张蓝图。 */
+    @Override
     public void picked(Schematic s){
         setBound(s);
         closePicker();
@@ -214,6 +221,7 @@ public class BarSlot extends Table{
         picker.toFront();
     }
 
+    @Override
     public void closePicker(){
         if(picker != null){
             picker.remove();

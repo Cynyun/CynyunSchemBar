@@ -2,6 +2,7 @@ package code;
 
 import arc.files.Fi;
 import arc.graphics.Color;
+import arc.struct.Seq;
 import arc.math.Mathf;
 import arc.util.Log;
 import arc.util.Time;
@@ -43,6 +44,17 @@ public final class BarConfig{
     public static String slotFile;
     /** 槽位别名：null / 空串 = 用蓝图原名。 */
     public static String slotAlias;
+
+    /**
+     * 悬浮窗的蓝图布局：栏目 → 序列 → 蓝图按钮，整体存在 config.json 的 bar 节点里。
+     * 这是真正的业务数据，UI 只负责读写它；改名只改 name，id 永远不动。
+     */
+    public static final Seq<BarCategory> categories = new Seq<>();
+    /** 当前选中的栏目 id；null 或找不到时界面回落到第一个栏目。 */
+    public static String activeCategory;
+
+    /** newId 的计数器：同一毫秒里连建两个对象也不会撞 id。 */
+    private static int idSeq;
 
     private BarConfig(){
     }
@@ -103,6 +115,9 @@ public final class BarConfig{
                 slotAlias = emptyToNull(slot.getString("alias", null));
             }
 
+            Jval bar = root.get("bar");
+            if(bar != null) readBar(bar);
+
             Jval t = root.get("");
             if(t != null){
                 clicks = Math.max(0, t.getInt("clicks", clicks));
@@ -116,6 +131,14 @@ public final class BarConfig{
         }
     }
 
+    /**
+     * 生成一个稳定 id。只在配置文件里有意义：栏目/序列/按钮改名时 id 不变，
+     * 所以“当前栏目”这类引用不会因为改名断掉。
+     */
+    public static String newId(String prefix){
+        return prefix + Integer.toString(++idSeq, 36) + "-" + Long.toString(Time.millis() % 100000, 36);
+    }
+
     private static String emptyToNull(String s){
         return s == null || s.isEmpty() ? null : s;
     }
@@ -124,6 +147,49 @@ public final class BarConfig{
         String hex = obj.getString(name, null);
         if(hex == null || hex.isEmpty()) return;
         target.set(Color.valueOf(hex));
+    }
+
+    /**
+     * 读栏目树。任何一层缺 id 就整段跳过：id 是唯一引用方式，补一个随机 id 会让
+     * “当前栏目”对不上，不如让用户重新加一次（原数据仍在文件里，只是没被用上）。
+     */
+    private static void readBar(Jval bar){
+        categories.clear();
+        activeCategory = null;
+
+        Jval cats = bar.get("categories");
+        if(cats != null && cats.isArray()){
+            for(Jval c : cats.asArray()){
+                if(c == null) continue;
+                String cid = emptyToNull(c.getString("id", null));
+                if(cid == null) continue;
+                BarCategory cat = new BarCategory(cid, c.getString("name", "栏目"));
+
+                Jval seqs = c.get("sequences");
+                if(seqs != null && seqs.isArray()){
+                    for(Jval s : seqs.asArray()){
+                        if(s == null) continue;
+                        String sid = emptyToNull(s.getString("id", null));
+                        if(sid == null) continue;
+                        BarSequence seq = new BarSequence(sid, s.getString("name", "序列"));
+
+                        Jval entries = s.get("entries");
+                        if(entries != null && entries.isArray()){
+                            for(Jval e : entries.asArray()){
+                                if(e == null) continue;
+                                seq.entries.add(new BarEntry(
+                                    emptyToNull(e.getString("file", null)),
+                                    emptyToNull(e.getString("title", null))));
+                            }
+                        }
+                        cat.sequences.add(seq);
+                    }
+                }
+                categories.add(cat);
+            }
+        }
+
+        activeCategory = emptyToNull(bar.getString("active", null));
     }
 
     private static void readWindow(Jval obj, WindowState st){
@@ -172,6 +238,39 @@ public final class BarConfig{
             if(slotAlias != null) slot.put("alias", slotAlias);
             root.put("slot", slot);
 
+            Jval bar = Jval.newObject();
+            if(activeCategory != null) bar.put("active", activeCategory);
+
+            Jval cats = Jval.newArray();
+            for(BarCategory cat : categories){
+                Jval cv = Jval.newObject();
+                cv.put("id", cat.id);
+                cv.put("name", cat.name);
+
+                Jval seqs = Jval.newArray();
+                for(BarSequence seq : cat.sequences){
+                    Jval sv = Jval.newObject();
+                    sv.put("id", seq.id);
+                    sv.put("name", seq.name);
+
+                    Jval entries = Jval.newArray();
+                    for(BarEntry e : seq.entries){
+                        // 既没绑定也没标题的空按钮不写盘：它没有任何可见内容
+                        if(e.file == null && (e.title == null || e.title.isEmpty())) continue;
+                        Jval o = Jval.newObject();
+                        if(e.file != null) o.put("file", e.file);
+                        if(e.title != null) o.put("title", e.title);
+                        entries.add(o);
+                    }
+                    sv.put("entries", entries);
+                    seqs.add(sv);
+                }
+                cv.put("sequences", seqs);
+                cats.add(cv);
+            }
+            bar.put("categories", cats);
+            root.put("bar", bar);
+
             Jval t = Jval.newObject();
             t.put("clicks", clicks);
             t.put("selected", selected);
@@ -217,7 +316,12 @@ public final class BarConfig{
 
     // ------------------------------------------------------------------ 默认
 
-    /** 恢复出厂：颜色、开关、测试数据、窗口位置与选择窗尺寸全部清空。 */
+    /**
+     * 恢复出厂：颜色、测试数据、窗口位置与选择窗尺寸全部清空。
+     *
+     * 刻意不动 categories / 蓝图绑定：设置窗里的“恢复默认”是给外观用的，
+     * 用户辛苦排好的栏目不该被一个配色按钮清掉。要清布局只能删 config.json。
+     */
     public static void defaults(){
         BarTheme.resetDefaults();
         clicks = 0;

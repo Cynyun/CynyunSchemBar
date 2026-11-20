@@ -7,7 +7,7 @@ import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
 
 /**
- * 设置浮窗：颜色 + 实时数据两段，风格与主面板一致（半透明 + 线框）。
+ * 设置浮窗：只放外观，风格与主面板一致（半透明 + 线框）。
  *
  * 测试阶段只留真正生效的项：没有实现的开关/滑条不放上来，免得点了没反应。
  *
@@ -16,14 +16,11 @@ import arc.scene.ui.layout.Table;
  */
 public class BarSettingsWindow extends BarWindow{
 
-    public static final float WIDTH = 400f, HEIGHT = 296f;
+    public static final float WIDTH = 400f, HEIGHT = 236f;
 
     private BarSlider opacitySlider;
     private Label opacityValue;
     private BarButton resetBtn;
-
-    private Label clickLabel, selectLabel;
-    private int shownClicks = Integer.MIN_VALUE, shownSelected = Integer.MIN_VALUE;
 
     /** “恢复默认”的二次确认窗口，3 秒不用就自动复原。 */
     private boolean resetArmed;
@@ -64,17 +61,6 @@ public class BarSettingsWindow extends BarWindow{
         op.add(opacitySlider).growX().height(16f).padLeft(2f).padRight(6f);
         op.add(opacityValue).width(34f).right();
         add(op).growX().height(18f).row();
-
-        // ---------------------------------------------------------------- 实时数据
-        add(BarTheme.accentText("· 实时数据")).growX().left().height(15f).padTop(2f).row();
-
-        clickLabel = BarTheme.dimText("");
-        clickLabel.touchable = arc.scene.event.Touchable.disabled;
-        add(clickLabel).growX().left().height(16f).row();
-
-        selectLabel = BarTheme.dimText("");
-        selectLabel.touchable = arc.scene.event.Touchable.disabled;
-        add(selectLabel).growX().left().height(16f).row();
 
         // ---------------------------------------------------------------- 底部按钮
         Table btns = new Table();
@@ -122,15 +108,6 @@ public class BarSettingsWindow extends BarWindow{
             }
         }
 
-        if(BarConfig.clicks != shownClicks){
-            shownClicks = BarConfig.clicks;
-            clickLabel.setText("点击次数：" + BarConfig.clicks);
-        }
-
-        if(BarConfig.selected != shownSelected){
-            shownSelected = BarConfig.selected;
-            selectLabel.setText("上次选择：" + (BarConfig.selected < 0 ? "无" : "蓝图条目 " + BarConfig.selected));
-        }
     }
 
     /** 把配置回填到控件上（打开设置窗、恢复默认后调用）。 */
@@ -141,9 +118,6 @@ public class BarSettingsWindow extends BarWindow{
         resetArmed = false;
         resetTimer = 0f;
         resetBtn.text("恢复默认");
-
-        shownClicks = Integer.MIN_VALUE;
-        shownSelected = Integer.MIN_VALUE;
     }
 
     /** 二次点击确认：第一次只改文字，3 秒内再点才真的重置。 */

@@ -6,8 +6,10 @@ import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.game.EventType.ResizeEvent;
 
 /**
- * 启动器：由 {@link Main} 在 mod 构造时调用 {@link #init()}，负责建测试悬浮窗并挂上设置窗 / 取色器。
- * 真实逻辑（栏目 → 序列 → 蓝图按钮）后续由 cynyunschembar 包接管。
+ * 启动器：由 {@link Main} 在 mod 构造时调用 {@link #init()}。
+ *
+ * 负责三件事：读配置、把主悬浮窗（{@link BarPanel}）挂到 hudGroup、在窗口尺寸变化时重排；
+ * 另外提供设置窗与取色器的开关（它们不是常驻窗口，按需创建）。
  */
 public class Start{
 
