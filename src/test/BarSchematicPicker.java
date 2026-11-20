@@ -1,6 +1,7 @@
 package test;
 
 import arc.Core;
+import arc.graphics.g2d.Draw;
 import arc.math.Mathf;
 import arc.math.geom.Vec2;
 import arc.scene.event.Touchable;
@@ -37,7 +38,8 @@ public class BarSchematicPicker extends BarWindow{
 
     /** 原版过滤标点的方式：先去掉符号再比名字，避免 “wall-1” 搜不到 “wall1”。 */
     private static final Pattern ignoreSymbols = Pattern.compile("[`~!@#$%^&*()\\-_=+{}|;:'\",<.>/?]");
-    private static final float HOVER_DELAY = 0.5f, HIDE_DELAY = 0.2f, POLL = 0.5f;
+    /** 悬停多久出详情、移开多久收起。短一点才跟手，长了像“没反应”。 */
+    private static final float HOVER_DELAY = 0.12f, HIDE_DELAY = 0.06f, POLL = 0.5f;
 
     // ------------------------------------------------------------------ 会话级状态
     private static String sessionSearch = "";
@@ -49,7 +51,6 @@ public class BarSchematicPicker extends BarWindow{
 
     private final Table grid = new Table(), chips = new Table();
     private final BarTextField search;
-    private final BarButton tagButton;
     private final Label countLabel, hint;
     private final BarResizeGrip grip;
 
@@ -86,15 +87,16 @@ public class BarSchematicPicker extends BarWindow{
 
         // ---------------------------------------------------------------- 搜索行
         Table srow = new Table();
-        srow.add(new Image(Icon.zoom)).size(14f).padRight(5f);
+        srow.add(new Image(Icon.zoom)).size(10f).padRight(8f);
 
         search = new BarTextField(sessionSearch, "搜索蓝图名", BarTextField.MAX_LENGTH);
         srow.add(search).growX().height(24f);
 
-        tagButton = new BarButton("标签 ▾").borderless(true).onClick(this::toggleOverview);
-        srow.add(tagButton).size(84f, 22f).padLeft(6f);
+        // 不使用这个标签下拉栏
+//        tagButton = new BarButton("标签 ▾").borderless(true).onClick(this::toggleOverview);
+//        srow.add(tagButton).size(84f, 22f).padLeft(6f);
 
-        srow.add(new BarIconButton(Icon.list, 12f).onClick(this::openVanilla)).size(22f).padLeft(2f);
+        srow.add(new BarIconButton(Icon.list, 12f).onClick(this::openVanilla)).size(12f).padLeft(2f);
         add(srow).growX().height(26f).row();
 
         // ---------------------------------------------------------------- 标签行
@@ -128,9 +130,23 @@ public class BarSchematicPicker extends BarWindow{
 
         rebuildChips();
         rebuildCards();
+    }
 
-        // 内容一律裁到窗口内（Table 自己支持裁剪），保证任何情况下都不会画到窗口外面去
-        setClip(true);
+    /**
+     * 整窗裁切（含右下角手柄）。
+     *
+     * 不能用 {@code setClip(true)}：Table 自带的那条路径是按内边距裁的
+     * （Table.java:98-106，从 padLeft/padBottom 起算），窗口有 8px 内边距，贴边的手柄
+     * 就整个落在裁剪区外——线条确实画了，只是被裁掉了，看上去像没有手柄。
+     */
+    @Override
+    public void draw(){
+        Draw.flush();
+        if(clipBegin(x, y, width, height)){
+            super.draw();
+            Draw.flush();
+            clipEnd();
+        }
     }
 
     /** 当前宽度下能排几列。滚动条宽度由 BarScroll 预留，这里要一起减掉。 */
@@ -307,10 +323,8 @@ public class BarSchematicPicker extends BarWindow{
 
             card.onUnhover(() -> {
                 if(hoverCard == card) hoverCard = null;
-                if(popup != null && !popup.pinned()) hideTime = HIDE_DELAY;
+                if(popup != null) hideTime = HIDE_DELAY;
             });
-
-            card.onInfo(() -> showPopup(card, true));
 
             grid.add(card).size(CARD_W, CARD_H);
             // 满一列就换行；最后一张不换，免得网格尾部多出一行空高度
@@ -341,35 +355,33 @@ public class BarSchematicPicker extends BarWindow{
             chips.add(b).height(20f).padRight(4f);
         }
 
-        // 按钮上的字数就是“当前筛了几项”，一眼能看出筛选是开着的
-        tagButton.text(selectedTags.isEmpty() ? "标签 ▾" : "标签 " + selectedTags.size + " ▾");
     }
 
     // ------------------------------------------------------------------ 浮层
+// 不使用标签下拉栏
+//    private void toggleOverview(){
+//        if(overview != null && overview.parent != null){
+//            overview.remove();
+//            overview = null;
+//            return;
+//        }
+//        if(Vars.ui == null || Vars.ui.hudGroup == null) return;
+//
+//        overview = new BarTagOverview(this);
+//        Vars.ui.hudGroup.addChild(overview);
+//        overview.toFront();
+//
+//        // 锚点是标签按钮的右下角：浮层右边缘对齐按钮，向下展开
+//        Vec2 v = tagButton.localToStageCoordinates(new Vec2(0f, tagButton.getHeight()));
+//        Vars.ui.hudGroup.stageToLocalCoordinates(v);
+//        overview.placeAt(v.x, v.y - 6f);
+//    }
 
-    private void toggleOverview(){
-        if(overview != null && overview.parent != null){
-            overview.remove();
-            overview = null;
-            return;
-        }
-        if(Vars.ui == null || Vars.ui.hudGroup == null) return;
-
-        overview = new BarTagOverview(this);
-        Vars.ui.hudGroup.addChild(overview);
-        overview.toFront();
-
-        // 锚点是标签按钮的右下角：浮层右边缘对齐按钮，向下展开
-        Vec2 v = tagButton.localToStageCoordinates(new Vec2(0f, tagButton.getHeight()));
-        Vars.ui.hudGroup.stageToLocalCoordinates(v);
-        overview.placeAt(v.x, v.y - 6f);
-    }
-
-    private void showPopup(BarSchematicCard card, boolean pinned){
+    private void showPopup(BarSchematicCard card){
         hidePopup();
         if(Vars.ui == null || Vars.ui.hudGroup == null) return;
 
-        popup = new BarSchematicInfoPopup(card.schematic(), pinned);
+        popup = new BarSchematicInfoPopup(card.schematic());
         Vars.ui.hudGroup.addChild(popup);
 
         // 卡片在滚动区里，x/y 是网格容器的局部坐标，必须换算到 hudGroup
@@ -428,16 +440,18 @@ public class BarSchematicPicker extends BarWindow{
         if(isDragging()){
             // 拖窗口时指针必然扫过卡片，别让它触发悬停详情
             hoverCard = null;
-            if(popup != null && !popup.pinned()) hidePopup();
-        }else if(hoverCard != null && hoverCard.parent != null && popup == null){
+            if(popup != null) hidePopup();
+        }else if(hoverCard != null && hoverCard.parent != null){
             hoverTime += delta;
-            if(hoverTime >= HOVER_DELAY) showPopup(hoverCard, false);
+            // 换了另一张卡就重新计时后直接换浮层，不用等旧浮层先收起来
+            boolean other = popup != null && popup.schematic() != hoverCard.schematic();
+            if(hoverTime >= HOVER_DELAY && (popup == null || other)) showPopup(hoverCard);
         }
 
         // 悬停浮层的收起：指针在浮层上就一直留着（浮层可能被夹到卡片上面，此时卡片已经“失去悬停”，
         // 只看卡片状态会导致浮层一出就把自己关掉、然后卡片又触发悬停的反复闪烁）
         if(hideTime > 0f) hideTime -= delta;
-        if(popup != null && !popup.pinned()){
+        if(popup != null && popup.parent != null){
             // 悬停状态是卡片/浮层自己用 enter/exit 维护的，这里只读布尔，不再每帧做 hit
             boolean overPopup = popup.hovered();
             boolean overCard = hoverCard != null && hoverCard.parent != null && hoverCard.isOver();

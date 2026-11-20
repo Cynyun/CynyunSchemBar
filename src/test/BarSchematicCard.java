@@ -1,6 +1,5 @@
 package test;
 
-import arc.input.KeyCode;
 import arc.scene.Element;
 import arc.scene.event.ClickListener;
 import arc.scene.event.InputEvent;
@@ -10,46 +9,43 @@ import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
 import arc.util.Align;
 import mindustry.game.Schematic;
-import mindustry.gen.Icon;
 import mindustry.ui.Styles;
 import mindustry.ui.dialogs.SchematicsDialog;
 
 /**
- * 蓝图网格里的一张卡片：预览图 + 名字 + 尺寸/方块数 + 标签，右上角一个小 i 看详情。
+ * 蓝图网格里的一张卡片：预览图 + 名字 + 尺寸/方块数 + 标签。详情浮层由 Picker 只管悬停触发。
  *
  * 每个格子都写死宽度（{@link #IW}）：SchematicImage 的 pref 是蓝图贴图尺寸（200+ 宽），Label 的
- * pref 是整行文字的宽度，都不写死的话卡片内部的一列会被撑到 200 多，而卡片本身只有 152 宽，
+ * pref 是整行文字的宽度，都不写死的话卡片内部的一列会被撑到 200 多，而卡片本身只有 176 宽，
  * Table 只好按“居中对齐 + 溢出”摆——看起来就是卡片互相压着、名字跑到隔壁卡片去。
  *
- * 不用 Button 而是直接继承 Table：卡片里要放一个可点的 i 按钮，Button 自带的
- * ClickListener 会在点击子按钮时也被触发（事件冒泡），结果“看详情”顺带把蓝图绑上了。
- * 这里自己挂 ClickListener 并在 touchDown 里挡掉落在 i 上的按下。
+ * 不用 Button 而是直接继承 Table：Button 自带 ClickListener，卡片里再挂别的监听时容易互相干扰，
+ * 这里自己挂一个 ClickListener，行为完全可控。
  *
  * 悬停状态走 enter/exit 事件，不在 act() 里算：每张卡每帧调一次 {@code Core.scene.hit} 会把整棵
  * 场景树走一遍，四百多张卡就是每帧上百万次元素访问，帧数直接掉下去。事件是引擎自己每帧只做一次
- * hit 之后派发的，所以指针移到 i 按钮上时卡片会先收到 exit、紧接着收到从按钮冒泡上来的 enter——
- * exit 里判断 toActor 是不是自己的后代，就能保持“还在卡片上”。
+ * hit 之后派发的，所以指针移到名字/标签这些子元素上时，卡片会先收到 exit、紧接着收到从子元素
+ * 冒泡上来的 enter——exit 里判断 toActor 是不是自己的后代，就能保持“还在卡片上”。
  */
 public class BarSchematicCard extends Table{
 
-    public static final float W = 152f, H = 180f;
+    public static final float W = 176f, H = 208f;
 
     /** 卡片内边距。 */
-    private static final float PAD = 5f;
+    private static final float PAD = 6f;
     /** 内容区宽度：卡片宽减左右内边距。所有子格都按它定宽。 */
     private static final float IW = W - PAD * 2f;
-    /** 预览图高度：180 - 2*5(边距) - 2(名字上方留白) - 16 - 13 - 12 = 127，取 126 留 1px 余量。 */
-    private static final float PREVIEW_H = 126f;
-    private static final float NAME_H = 16f, META_H = 13f, TAGS_H = 12f;
+    /** 预览图高度：208 - 2*6(边距) - 2(名字上方留白) - 18 - 14 - 13 = 149。 */
+    private static final float PREVIEW_H = 149f;
+    private static final float NAME_H = 18f, META_H = 14f, TAGS_H = 13f;
 
     private final Schematic schem;
     private final Label name;
-    private final BarIconButton info;
 
     private boolean selected, over;
     private final ClickListener click;
 
-    private Runnable onClick, onHover, onUnhover, onInfo;
+    private Runnable onClick, onHover, onUnhover;
 
     public BarSchematicCard(Schematic schem){
         this.schem = schem;
@@ -60,19 +56,9 @@ public class BarSchematicCard extends Table{
         defaults().pad(0f);
         top();
 
-        // ---------------------------------------------------------------- 预览 + 右上角 i
+        // ---------------------------------------------------------------- 预览
         SchematicsDialog.SchematicImage preview = new SchematicsDialog.SchematicImage(schem);
-
-        info = new BarIconButton(Icon.info, 12f);
-        info.onClick(() -> {
-            if(onInfo != null) onInfo.run();
-        });
-
-        Table corner = new Table();
-        corner.top().right();
-        corner.add(info).size(18f).padTop(2f).padRight(2f);
-
-        stack(preview, corner).width(IW).height(PREVIEW_H).row();
+        add(preview).width(IW).height(PREVIEW_H).row();
 
         // ---------------------------------------------------------------- 文字
         name = new Label(schem.name(), new Label.LabelStyle(Styles.defaultLabel));
@@ -80,21 +66,13 @@ public class BarSchematicCard extends Table{
         name.setEllipsis(true);
         add(name).width(IW).height(NAME_H).padTop(2f).row();
 
-        add(BarTheme.dimText(schem.width + " × " + schem.height + " · " + schem.tiles.size + " 方块").alpha(0.75f))
+        add(BarTheme.dimText(schem.width + " × " + schem.height + " · " + schem.tiles.size).alpha(0.75f))
             .width(IW).height(META_H).row();
 
         add(BarTheme.dimText(tagsLine(schem)).alpha(0.6f))
             .width(IW).height(TAGS_H).ellipsis(true).row();
 
         click = new ClickListener(){
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                if(pointer != 0 || button != KeyCode.mouseLeft) return false;
-                // 点在 i 上就完全交给 i，卡片不进入按下态（返回 false 后不会再收 touchUp）
-                if(hitsInfo(event.targetActor)) return false;
-                return super.touchDown(event, x, y, pointer, button);
-            }
-
             @Override
             public void clicked(InputEvent event, float x, float y){
                 if(onClick != null) onClick.run();
@@ -114,7 +92,7 @@ public class BarSchematicCard extends Table{
             @Override
             public void exit(InputEvent event, float x, float y, int pointer, Element toActor){
                 if(pointer != -1 || !over) return;
-                // 移到自己的子元素（右上角的 i、名字、标签）上不算离开
+                // 移到自己的子元素（名字、标签）上不算离开
                 if(inside(toActor)) return;
                 over = false;
                 if(onUnhover != null) onUnhover.run();
@@ -126,13 +104,6 @@ public class BarSchematicCard extends Table{
     private boolean inside(Element target){
         for(Element e = target; e != null; e = e.parent){
             if(e == this) return true;
-        }
-        return false;
-    }
-
-    private boolean hitsInfo(Element target){
-        for(Element e = target; e != null && e != this; e = e.parent){
-            if(e == info) return true;
         }
         return false;
     }
@@ -171,10 +142,6 @@ public class BarSchematicCard extends Table{
 
     public void onUnhover(Runnable r){
         onUnhover = r;
-    }
-
-    public void onInfo(Runnable r){
-        onInfo = r;
     }
 
     /** 指针是否停在卡片上（含子元素）。由 enter/exit 维护，每帧读它零成本。 */

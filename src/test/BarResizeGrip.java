@@ -108,13 +108,14 @@ public class BarResizeGrip extends Element{
     public void draw(){
         float a = parentAlpha;
 
-        // 三条平行斜线，从底边走到右边，端点正好贴着边框内侧
+        // 三条平行斜线，从底边走到右边，端点正好贴着边框内侧。
+        // 常态就得到 0.55——太淡的话在深色战场上根本看不出来，用户也就不知道能拖。
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b,
-            (dragging ? 1f : over ? 0.9f : 0.45f) * a);
+            (dragging ? 1f : over ? 0.95f : 0.55f) * a);
         Lines.stroke(1f);
         for(int i = 0; i < 3; i++){
-            float d = 6f + i * 4f;
-            Lines.line(width - d, 2f, width - 2f, d);
+            float d = 5f + i * 4f;
+            Lines.line(width - d, 3f, width - 3f, d);
         }
         Draw.reset();
     }

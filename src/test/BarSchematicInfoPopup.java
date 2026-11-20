@@ -1,59 +1,47 @@
 package test;
 
-import arc.Core;
-import arc.input.KeyCode;
 import arc.scene.Element;
 import arc.scene.event.InputEvent;
 import arc.scene.event.InputListener;
 import arc.scene.event.Touchable;
+import arc.scene.ui.Image;
+import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
+import arc.util.Strings;
 import mindustry.game.Schematic;
 import mindustry.gen.Icon;
+import mindustry.graphics.Pal;
 import mindustry.type.ItemStack;
+import mindustry.ui.Styles;
 import mindustry.ui.dialogs.SchematicsDialog;
 
 /**
- * 卡片详情浮层：悬停 0.5 秒弹出，或点卡片右上角的 i（手机上没有悬停，i 是唯一入口）。
+ * 卡片详情浮层：悬停即出，指针离开就收。
  *
  * 不是 BarWindow：它跟着卡片走、不能拖动、也不该抢焦点。只能看，不能改任何东西
  * （改名/绑定都在槽位窗那边），所以点它自己不做任何事。
  *
- * 悬停版（pinned=false）在指针离开卡片后由 Picker 计时关掉；i 打开的版本（pinned=true）
- * 挂一个 Scene 级 capture 监听，点外面或 Esc 关闭。
+ * 宽度是写死的：所有行都必须按 {@link #WIDTH} 排得下。arc 的 Label 最小宽度等于文字宽度
+ * （Label.java:231-233），一行塞不下的话不是换行、而是整张表往右溢出——这就是上一版
+ * “文字跑到浮窗外边”的原因。所以消耗表按固定列宽切，电量单独成行。
  */
 public class BarSchematicInfoPopup extends Table{
 
-    public static final float WIDTH = 268f;
+    public static final float WIDTH = 300f;
+    /** 左右内边距。 */
+    private static final float MARGIN = 8f;
+    /** 内容区宽度。 */
+    private static final float INNER = WIDTH - MARGIN * 2f;
 
-    private final boolean pinned;
+    private final Schematic schem;
     /** 指针是否停在浮层上。由 enter/exit 维护：Picker 每帧问它来决定要不要收起浮层。 */
     private boolean over;
 
-    private final InputListener outside = new InputListener(){
-        @Override
-        public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-            for(Element e = event.targetActor; e != null; e = e.parent){
-                if(e == BarSchematicInfoPopup.this) return false;
-            }
-            hide();
-            return true; // 吃掉：否则关浮层的同时点到了底下的东西
-        }
-
-        @Override
-        public boolean keyDown(InputEvent event, KeyCode key){
-            if(key == KeyCode.escape || key == KeyCode.back){
-                hide();
-                return true;
-            }
-            return false;
-        }
-    };
-
-    public BarSchematicInfoPopup(Schematic schem, boolean pinned){
-        this.pinned = pinned;
+    public BarSchematicInfoPopup(Schematic schem){
+        this.schem = schem;
 
         touchable = Touchable.enabled;
-        margin(8f);
+        margin(MARGIN);
         defaults().pad(1f);
         top();
 
@@ -65,7 +53,8 @@ public class BarSchematicInfoPopup extends Table{
 
         // ---------------------------------------------------------------- 消耗
         ItemStack[] reqs = schem.requirements().toArray();
-        float cons = schem.powerConsumption(), prod = schem.powerProduction();
+        // 原版 SchematicsDialog.java:808 就是这么算的：内部值按 tick 计，乘 60 换成每秒
+        float cons = schem.powerConsumption() * 60f, prod = schem.powerProduction() * 60f;
         boolean hasPower = cons > 0.001f || prod > 0.001f;
 
         if(reqs.length > 0 || hasPower){
@@ -74,24 +63,35 @@ public class BarSchematicInfoPopup extends Table{
 
         if(reqs.length > 0){
             Table cost = new Table();
-            cost.defaults().pad(1f);
+            cost.defaults().pad(0f);
+            float cellW = (INNER - 6f) / 4f;
             int i = 0;
             for(ItemStack st : reqs){
-                cost.image(st.item.uiIcon).size(14f);
-                cost.add(BarTheme.text(String.valueOf(st.amount))).padRight(8f);
-                if(++i % 5 == 0) cost.row();
+                Table cell = new Table();
+                cell.add(new Image(st.item.uiIcon)).size(14f).padRight(3f);
+                Label amount = new Label(String.valueOf(st.amount), Styles.defaultLabel);
+                amount.setEllipsis(true);
+                // 数量列给固定宽度，五位数的数量也压得住，不会把整行顶宽
+                cell.add(amount).width(cellW - 19f).left();
+                cost.add(cell).width(cellW).padBottom(2f);
+                if(++i % 4 == 0) cost.row();
             }
             add(cost).growX().left().row();
         }
 
         if(hasPower){
             Table power = new Table();
-            power.image(Icon.powerSmall).size(13f).padRight(3f);
-            String p = "";
-            if(cons > 0.001f) p += String.format("%.1f/s 消耗", cons);
-            if(prod > 0.001f) p += (p.isEmpty() ? "" : "    ") + String.format("%.1f/s 产出", prod);
-            power.add(BarTheme.text(p)).left();
-            add(power).growX().left().row();
+            power.defaults().pad(0f);
+            if(prod > 0.001f){
+                power.image(Icon.powerSmall).color(Pal.powerLight).size(13f).padRight(3f);
+                power.add(powerText("+" + Strings.autoFixed(prod, 2) + "/s", Pal.powerLight)).left();
+            }
+            if(cons > 0.001f){
+                if(prod > 0.001f) power.add().width(14f);
+                power.image(Icon.powerSmall).color(Pal.remove).size(13f).padRight(3f);
+                power.add(powerText("-" + Strings.autoFixed(cons, 2) + "/s", Pal.remove)).left();
+            }
+            add(power).growX().left().padTop(1f).row();
         }
 
         // ---------------------------------------------------------------- 标签
@@ -123,12 +123,17 @@ public class BarSchematicInfoPopup extends Table{
         });
 
         setSize(WIDTH, getPrefHeight());
-
-        if(pinned && Core.scene != null) Core.scene.addCaptureListener(outside);
     }
 
-    public boolean pinned(){
-        return pinned;
+    /** 电量文字要跟原版一样带颜色，所以这里不用 BarTheme 的会自换色的 Label。 */
+    private static Label powerText(String text, arc.graphics.Color color){
+        Label label = new Label(text, Styles.defaultLabel);
+        label.setColor(color);
+        return label;
+    }
+
+    public Schematic schematic(){
+        return schem;
     }
 
     /** 指针是否停在浮层上（含子元素）。 */
@@ -138,12 +143,6 @@ public class BarSchematicInfoPopup extends Table{
 
     public void hide(){
         remove();
-    }
-
-    @Override
-    public boolean remove(){
-        if(pinned && Core.scene != null) Core.scene.removeCaptureListener(outside);
-        return super.remove();
     }
 
     @Override

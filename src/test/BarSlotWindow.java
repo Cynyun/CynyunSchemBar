@@ -220,7 +220,7 @@ public class BarSlotWindow extends BarWindow{
     private void showPreview(){
         if(bound == null || Vars.ui == null || Vars.ui.hudGroup == null) return;
 
-        preview = new BarSchematicInfoPopup(bound, false);
+        preview = new BarSchematicInfoPopup(bound);
         Vars.ui.hudGroup.addChild(preview);
 
         // 优先放窗口右侧，右边放不下翻到左侧；竖直方向与窗口底边对齐后夹进屏幕
