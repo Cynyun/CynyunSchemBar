@@ -8,7 +8,7 @@ name: "cynyun-schembar"
 author: "Cynyun"
 
 #the fully qualified main class of the mod
-main: "test.TestMod"
+main: "Main"
 
 #the mod description as seen in the mod dialog
 description: "A Mindustry Java mod template."
