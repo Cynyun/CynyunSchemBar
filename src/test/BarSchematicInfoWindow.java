@@ -132,7 +132,7 @@ public class BarSchematicInfoWindow extends BarWindow{
 
         Table arow = new Table();
         arow.add(BarTheme.dimText("别名")).width(44f).left();
-        alias = new BarTextField(shownAlias, "留空则用蓝图原名", 24);
+        alias = new BarTextField(shownAlias, "留空则用蓝图原名", BarTextField.MAX_LENGTH);
         arow.add(alias).growX().height(24f);
         add(arow).growX().height(26f).padTop(2f).row();
 

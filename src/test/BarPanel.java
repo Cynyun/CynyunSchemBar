@@ -75,10 +75,10 @@ public class BarPanel extends BarWindow{
         // ① 输入框两种外观：底线 / 侧标。两者都实现 BarControl，按上去不会拖动窗口。
         // 文本存进 Core.settings（不是 config.json）：Mindustry 关掉了 settings 自动写盘，
         // 正常退出时由 Control 统一 forceSave，够“短暂持久化”用。
-        underlineField = new BarTextField(Core.settings.getString(KEY_UNDERLINE, ""), "点这里输入（底线）", 40);
+        underlineField = new BarTextField(Core.settings.getString(KEY_UNDERLINE, ""), "点这里输入（底线）", BarTextField.MAX_LENGTH);
         content.add(inputRow("底线", underlineField)).growX().height(24f).padTop(4f).row();
 
-        sideField = new BarTextField(Core.settings.getString(KEY_SIDE, ""), "点这里输入（侧标）", 40, BarTextField.Style.SIDE);
+        sideField = new BarTextField(Core.settings.getString(KEY_SIDE, ""), "点这里输入（侧标）", BarTextField.MAX_LENGTH, BarTextField.Style.SIDE);
         content.add(inputRow("侧标", sideField)).growX().height(24f).row();
 
         inputEcho = BarTheme.dimText("");

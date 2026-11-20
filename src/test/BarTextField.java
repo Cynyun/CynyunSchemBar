@@ -41,6 +41,9 @@ public class BarTextField extends Table implements BarControl{
         SIDE
     }
 
+    /** 单行输入的统一上限：100 字够放一段话，再多也不适合单行编辑。 */
+    public static final int MAX_LENGTH = 100;
+
     public final TextField field;
 
     private final Style style;
@@ -127,7 +130,13 @@ public class BarTextField extends Table implements BarControl{
         // 侧标的聚焦底色要垫在文字下面，所以先铺再画子元素
         if(style == Style.SIDE && focused) BarTheme.fillAccent(x, y, width, height, 0.08f * a);
 
-        super.draw();
+        // 把子元素裁在自己的盒子里：TextField 自己会按宽度决定露出哪一段文字，
+        // 但一旦样式底图被置空、或者组件被塞进更窄的行里，文字就可能画到框外。
+        // 裁一刀之后，“输入很多”最多只是左边字符被切掉，绝不会把整个界面撑宽。
+        if(clipBegin()){
+            super.draw();
+            clipEnd();
+        }
 
         if(style == Style.SIDE){
             float alpha = focused ? 0.95f * a : (over ? 0.60f : 0.35f) * a;

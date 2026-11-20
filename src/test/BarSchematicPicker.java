@@ -88,7 +88,7 @@ public class BarSchematicPicker extends BarWindow{
         Table srow = new Table();
         srow.add(new Image(Icon.zoom)).size(14f).padRight(5f);
 
-        search = new BarTextField(sessionSearch, "搜索蓝图名", 40);
+        search = new BarTextField(sessionSearch, "搜索蓝图名", BarTextField.MAX_LENGTH);
         srow.add(search).growX().height(24f);
 
         tagButton = new BarButton("标签 ▾").borderless(true).onClick(this::toggleOverview);
