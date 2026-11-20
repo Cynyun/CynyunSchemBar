@@ -8,9 +8,6 @@ import arc.scene.event.InputEvent;
 import arc.scene.event.InputListener;
 import arc.scene.event.Touchable;
 import arc.scene.ui.layout.Table;
-import mindustry.gen.Icon;
-import mindustry.type.ItemStack;
-import mindustry.ui.dialogs.SchematicsDialog;
 import mindustry.game.Schematic;
 
 /**
@@ -75,56 +72,11 @@ public class BarSchematicInfoWindow extends BarWindow{
         add(new BarDivider()).growX().height(1f).padTop(2f).padBottom(3f).row();
 
         // ---------------------------------------------------------------- 内容
-        Table body = new Table();
-        body.top();
-        body.defaults().pad(2f);
-
-        body.add(new SchematicsDialog.SchematicImage(schem)).growX().height(168f).padBottom(6f).row();
-
-        body.add(BarTheme.text(schem.name())).growX().left().ellipsis(true).row();
-        body.add(BarTheme.dimText(schem.width + " × " + schem.height + "    方块 " + schem.tiles.size))
-            .growX().left().padTop(2f).row();
-
-        body.add(BarTheme.accentText("· 消耗")).growX().left().padTop(8f).padBottom(2f).row();
-
-        ItemStack[] reqs = schem.requirements().toArray();
-        float cons = schem.powerConsumption(), prod = schem.powerProduction();
-        boolean hasPower = cons > 0.001f || prod > 0.001f;
-
-        if(reqs.length == 0 && !hasPower){
-            body.add(BarTheme.dimText("无")).growX().left().row();
-        }
-
-        if(reqs.length > 0){
-            Table cost = new Table();
-            cost.defaults().pad(2f);
-            int i = 0;
-            for(ItemStack st : reqs){
-                cost.image(st.item.uiIcon).size(18f);
-                cost.add(BarTheme.text(String.valueOf(st.amount))).padRight(12f);
-                if(++i % 4 == 0) cost.row();
-            }
-            body.add(cost).growX().left().row();
-        }
-
-        if(hasPower){
-            Table power = new Table();
-            power.defaults().pad(2f);
-            power.image(Icon.powerSmall).size(16f).padRight(2f);
-            String p = "";
-            if(cons > 0.001f) p += String.format("%.1f/s 消耗", cons);
-            if(prod > 0.001f) p += (p.isEmpty() ? "" : "    ") + String.format("%.1f/s 产出", prod);
-            power.add(BarTheme.text(p)).left();
-            body.add(power).growX().left().padTop(2f).row();
-        }
-
-        String desc = schem.description();
-        if(desc != null && !desc.isEmpty()){
-            body.add(BarTheme.dimText(desc)).growX().left().wrap().padTop(8f).row();
-        }
-
+        // 正文直接用悬停浮层那一份实现（BarSchematicInfo）：预览、消耗、电量（含 ×60）、
+        // 标签、描述都与浮层逐像素一致，不再各写一套。描述传 0 = 不截断，交给下面的滚动区
+        BarSchematicInfo body = new BarSchematicInfo(schem, WIDTH - 16f - BarScroll.BAR_WIDTH, 0);
         // 预览图是固定高的，消耗/描述行数不定：滚动区高度按内容定，窗口再跟着收缩
-        float bodyH = Mathf.clamp(body.getPrefHeight() + 4f, 120f, 300f);
+        float bodyH = Mathf.clamp(body.getPrefHeight() + 4f, 120f, 320f);
         add(new BarScroll(body)).growX().height(bodyH).row();
 
         // ---------------------------------------------------------------- 别名

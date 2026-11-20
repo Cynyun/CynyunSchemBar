@@ -87,7 +87,7 @@ public class BarSchematicPicker extends BarWindow{
 
         // ---------------------------------------------------------------- 搜索行
         Table srow = new Table();
-        srow.add(new Image(Icon.zoom)).size(10f).padRight(8f);
+//        srow.add(new Image(Icon.zoom)).size(10f).padRight(8f);
 
         search = new BarTextField(sessionSearch, "搜索蓝图名", BarTextField.MAX_LENGTH);
         srow.add(search).growX().height(24f);
@@ -96,7 +96,8 @@ public class BarSchematicPicker extends BarWindow{
 //        tagButton = new BarButton("标签 ▾").borderless(true).onClick(this::toggleOverview);
 //        srow.add(tagButton).size(84f, 22f).padLeft(6f);
 
-        srow.add(new BarIconButton(Icon.list, 12f).onClick(this::openVanilla)).size(12f).padLeft(2f);
+        // 三条横线自己画：原版 Icon.list 是贴图，设置里换色时不会跟着变
+        srow.add(new BarMenuButton(18f).onClick(this::openVanilla)).size(18f).padLeft(4f);
         add(srow).growX().height(26f).row();
 
         // ---------------------------------------------------------------- 标签行

@@ -29,13 +29,13 @@ import mindustry.ui.dialogs.SchematicsDialog;
  */
 public class BarSchematicCard extends Table{
 
-    public static final float W = 176f, H = 208f;
+    public static final float W = 176f, H = 218f;
 
     /** 卡片内边距。 */
     private static final float PAD = 6f;
     /** 内容区宽度：卡片宽减左右内边距。所有子格都按它定宽。 */
     private static final float IW = W - PAD * 2f;
-    /** 预览图高度：208 - 2*6(边距) - 2(名字上方留白) - 18 - 14 - 13 = 149。 */
+    /** 预览图高度：218 - 2*6(边距) - 2(名字上方留白) - 18 - 14 - 13 = 159。 */
     private static final float PREVIEW_H = 149f;
     private static final float NAME_H = 18f, META_H = 14f, TAGS_H = 13f;
 
