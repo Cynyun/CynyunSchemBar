@@ -33,6 +33,8 @@ desktop-sdl/build/
 ios/robovm.properties
 packr-out/
 config/
+# 例外：mod 源码里的 config 包（BarConfig 等），否则会被上面的 config/ 规则吞掉
+!src/code/config/
 *.gif
 
 version.properties
