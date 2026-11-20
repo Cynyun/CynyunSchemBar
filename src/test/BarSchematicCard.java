@@ -4,6 +4,7 @@ import arc.input.KeyCode;
 import arc.scene.Element;
 import arc.scene.event.ClickListener;
 import arc.scene.event.InputEvent;
+import arc.scene.event.InputListener;
 import arc.scene.event.Touchable;
 import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
@@ -24,8 +25,10 @@ import mindustry.ui.dialogs.SchematicsDialog;
  * ClickListener 会在点击子按钮时也被触发（事件冒泡），结果“看详情”顺带把蓝图绑上了。
  * 这里自己挂 ClickListener 并在 touchDown 里挡掉落在 i 上的按下。
  *
- * 悬停状态不用 enter/exit 事件：指针移到 i 按钮上时卡片会收到 exit，但用户其实还在卡片上。
- * 每帧用 {@link BarTheme#pointerOver} 算一次，遮挡和裁剪都算得对。
+ * 悬停状态走 enter/exit 事件，不在 act() 里算：每张卡每帧调一次 {@code Core.scene.hit} 会把整棵
+ * 场景树走一遍，四百多张卡就是每帧上百万次元素访问，帧数直接掉下去。事件是引擎自己每帧只做一次
+ * hit 之后派发的，所以指针移到 i 按钮上时卡片会先收到 exit、紧接着收到从按钮冒泡上来的 enter——
+ * exit 里判断 toActor 是不是自己的后代，就能保持“还在卡片上”。
  */
 public class BarSchematicCard extends Table{
 
@@ -98,6 +101,33 @@ public class BarSchematicCard extends Table{
             }
         };
         addListener(click);
+
+        // 悬停：只认鼠标（pointer == -1），手指按下产生的 enter 不该弹出详情
+        addListener(new InputListener(){
+            @Override
+            public void enter(InputEvent event, float x, float y, int pointer, Element fromActor){
+                if(pointer != -1 || over) return;
+                over = true;
+                if(onHover != null) onHover.run();
+            }
+
+            @Override
+            public void exit(InputEvent event, float x, float y, int pointer, Element toActor){
+                if(pointer != -1 || !over) return;
+                // 移到自己的子元素（右上角的 i、名字、标签）上不算离开
+                if(inside(toActor)) return;
+                over = false;
+                if(onUnhover != null) onUnhover.run();
+            }
+        });
+    }
+
+    /** target 是自己或自己的后代。 */
+    private boolean inside(Element target){
+        for(Element e = target; e != null; e = e.parent){
+            if(e == this) return true;
+        }
+        return false;
     }
 
     private boolean hitsInfo(Element target){
@@ -147,19 +177,9 @@ public class BarSchematicCard extends Table{
         onInfo = r;
     }
 
-    @Override
-    public void act(float delta){
-        super.act(delta);
-
-        boolean now = BarTheme.pointerOver(this);
-        if(now != over){
-            over = now;
-            if(now){
-                if(onHover != null) onHover.run();
-            }else if(onUnhover != null){
-                onUnhover.run();
-            }
-        }
+    /** 指针是否停在卡片上（含子元素）。由 enter/exit 维护，每帧读它零成本。 */
+    public boolean isOver(){
+        return over;
     }
 
     @Override

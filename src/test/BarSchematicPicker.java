@@ -58,6 +58,8 @@ public class BarSchematicPicker extends BarWindow{
     private BarSchematicInfoPopup popup;
     private BarSchematicCard hoverCard;
     private float hoverTime, hideTime, pollTime;
+    /** 搜索防抖：连续打字时不重建网格，停手 0.2 秒才理一次。 */
+    private float searchDelay;
 
     private int shownLibrary = -1, shownTagCount = -1;
     /** 当前网格排了几列。列数变了才重建卡片，拖动缩放时不至于每像素重建一次。 */
@@ -273,6 +275,9 @@ public class BarSchematicPicker extends BarWindow{
 
     private void rebuildCards(){
         grid.clearChildren();
+        // 卡片全被换掉了，旧的悬停目标不能留着（新卡片压在指针上的话，引擎下一帧会重新发 enter）
+        hoverCard = null;
+        hoverTime = 0f;
         shownLibrary = libraryCount();
         shownTagCount = allTags().size();
         columns = columnsFor();
@@ -397,12 +402,16 @@ public class BarSchematicPicker extends BarWindow{
         // 拖右下角缩放 / 切分辨率后列数变了，重排一次卡片
         if(shownLibrary >= 0 && columnsFor() != columns) rebuildCards();
 
-        // 搜索词统一在这里读：粘贴、清空、中文输入法都能覆盖，不必依赖 TextField 的回调时机
+        // 搜索词统一在这里读：粘贴、清空、中文输入法都能覆盖，不必依赖 TextField 的回调时机。
+        // 但重建要防抖——每变一个字就重造几百张卡片（每张 3 个 Label）会明显卡一下。
         String cur = search.text();
         if(!cur.equals(sessionSearch)){
             sessionSearch = cur;
-            rebuildCards();
+            searchDelay = 0.2f;
             hidePopup();
+        }else if(searchDelay > 0f){
+            searchDelay -= delta;
+            if(searchDelay <= 0f) rebuildCards();
         }
 
         // 蓝图库/标签可能被原版界面改动，半秒查一次就行
@@ -429,8 +438,9 @@ public class BarSchematicPicker extends BarWindow{
         // 只看卡片状态会导致浮层一出就把自己关掉、然后卡片又触发悬停的反复闪烁）
         if(hideTime > 0f) hideTime -= delta;
         if(popup != null && !popup.pinned()){
-            boolean overPopup = BarTheme.pointerOver(popup);
-            boolean overCard = hoverCard != null && hoverCard.parent != null && BarTheme.pointerOver(hoverCard);
+            // 悬停状态是卡片/浮层自己用 enter/exit 维护的，这里只读布尔，不再每帧做 hit
+            boolean overPopup = popup.hovered();
+            boolean overCard = hoverCard != null && hoverCard.parent != null && hoverCard.isOver();
 
             if(overPopup) hideTime = HIDE_DELAY;
             else if(!overCard && hideTime <= 0f) hidePopup();

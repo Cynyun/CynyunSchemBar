@@ -26,6 +26,8 @@ public class BarSchematicInfoPopup extends Table{
     public static final float WIDTH = 268f;
 
     private final boolean pinned;
+    /** 指针是否停在浮层上。由 enter/exit 维护：Picker 每帧问它来决定要不要收起浮层。 */
+    private boolean over;
 
     private final InputListener outside = new InputListener(){
         @Override
@@ -108,6 +110,18 @@ public class BarSchematicInfoPopup extends Table{
             add(BarTheme.dimText(desc)).growX().left().padTop(4f).wrap().row();
         }
 
+        addListener(new InputListener(){
+            @Override
+            public void enter(InputEvent event, float x, float y, int pointer, Element fromActor){
+                if(pointer == -1) over = true;
+            }
+
+            @Override
+            public void exit(InputEvent event, float x, float y, int pointer, Element toActor){
+                if(pointer == -1) over = false;
+            }
+        });
+
         setSize(WIDTH, getPrefHeight());
 
         if(pinned && Core.scene != null) Core.scene.addCaptureListener(outside);
@@ -115,6 +129,11 @@ public class BarSchematicInfoPopup extends Table{
 
     public boolean pinned(){
         return pinned;
+    }
+
+    /** 指针是否停在浮层上（含子元素）。 */
+    public boolean hovered(){
+        return over;
     }
 
     public void hide(){

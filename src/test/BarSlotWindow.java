@@ -206,7 +206,7 @@ public class BarSlotWindow extends BarWindow{
             return;
         }
 
-        if(BarTheme.pointerOver(action) || (preview != null && BarTheme.pointerOver(preview))){
+        if(action.isOver() || (preview != null && preview.hovered())){
             hideTime = 0f;
             hoverTime += delta;
             if(preview == null && hoverTime >= HOVER_DELAY) showPreview();

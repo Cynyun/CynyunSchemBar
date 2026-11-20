@@ -1,11 +1,9 @@
 package test;
 
-import arc.Core;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.graphics.g2d.Lines;
-import arc.scene.Element;
 import arc.scene.ui.Label;
 import mindustry.ui.Styles;
 
@@ -60,21 +58,6 @@ public final class BarTheme{
     public static void fillAccent(float x, float y, float w, float h, float alpha){
         Draw.color(accent.r, accent.g, accent.b, alpha);
         Fill.crect(x, y, w, h);
-    }
-
-    /**
-     * 指针是否真的落在该元素上（考虑遮挡与裁剪）。
-     *
-     * 不用“自己比矩形”的写法：滚动区里被裁掉的卡片、被别的窗口压住的元素，
-     * 矩形仍然覆盖指针，但用户其实没有悬停在它上面。Scene.hit 已经把这层判断做完了。
-     */
-    public static boolean pointerOver(Element e){
-        if(e == null || Core.scene == null) return false;
-        Element hit = Core.scene.hit(Core.input.mouseX(), Core.input.mouseY(), true);
-        for(Element p = hit; p != null; p = p.parent){
-            if(p == e) return true;
-        }
-        return false;
     }
 
     /** 完整矩形描边。加 0.5 偏移让 1px 线正好落在一像素上，不发虚。 */

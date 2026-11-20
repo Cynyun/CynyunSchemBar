@@ -37,6 +37,8 @@ public class BarResizeGrip extends Element{
 
     private float startW, startH, startX, startY;
     private boolean dragging;
+    /** 指针是否停在这个三角上。由 enter/exit 维护，draw 里读它，不每帧做 hit。 */
+    private boolean over;
 
     public BarResizeGrip(Element target, float minW, float minH, Handler handler){
         this.target = target;
@@ -80,6 +82,16 @@ public class BarResizeGrip extends Element{
                 dragging = false;
                 handler.resized();
             }
+
+            @Override
+            public void enter(InputEvent event, float x, float y, int pointer, Element fromActor){
+                if(pointer == -1) over = true;
+            }
+
+            @Override
+            public void exit(InputEvent event, float x, float y, int pointer, Element toActor){
+                if(pointer == -1) over = false;
+            }
         });
     }
 
@@ -95,7 +107,6 @@ public class BarResizeGrip extends Element{
     @Override
     public void draw(){
         float a = parentAlpha;
-        boolean over = BarTheme.pointerOver(this);
 
         // 三条平行斜线，从底边走到右边，端点正好贴着边框内侧
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b,
