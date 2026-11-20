@@ -13,7 +13,6 @@ import mindustry.mod.Mod;
 public class TestMod extends Mod{
 
     private static BarPanel panel;
-    private static BarSlotWindow slot;
     private static BarSettingsWindow settings;
     private static BarColorPicker picker;
 
@@ -30,17 +29,10 @@ public class TestMod extends Mod{
             panel.applyLayout();
             panel.toFront();
 
-            // 蓝图槽位窗：绑定/编辑都只存会话，重启即为未绑定
-            slot = new BarSlotWindow();
-            Vars.ui.hudGroup.addChild(slot);
-            slot.applyLayout();
-            slot.toFront();
-
             // 窗口尺寸变化：贴边的继续贴边，自由态的按比例跟随。用 Core.graphics 而不是
             // hudGroup 的宽高——后者要等下一次布局才更新，事件里读到的还是旧尺寸。
             Events.on(ResizeEvent.class, ev -> {
                 if(panel != null && panel.parent != null) panel.applyLayout();
-                if(slot != null && slot.parent != null) slot.onResize();
                 if(settings != null && settings.parent != null) settings.applyLayout();
                 if(picker != null && picker.parent != null) picker.applyLayout();
             });
@@ -95,7 +87,6 @@ public class TestMod extends Mod{
     /** 恢复默认要连窗口位置一起重置：位置存在 BarConfig 的 WindowState 里。 */
     public static void resetWindows(){
         if(panel != null) panel.resetToDefault();
-        if(slot != null) slot.resetToDefault();
         if(settings != null) settings.resetToDefault();
     }
 }

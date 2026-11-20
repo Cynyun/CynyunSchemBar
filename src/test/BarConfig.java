@@ -30,6 +30,14 @@ public final class BarConfig{
     /** 两个窗口的位置：贴边状态 + 自由态比例。 */
     public static final WindowState mainWindow = new WindowState(), settingsWindow = new WindowState();
 
+    /**
+     * 槽位绑定的蓝图：存文件名（不含扩展名），重启后在 {@code Vars.schematics.all()} 里按名找回。
+     * 蓝图没有稳定 id，文件名是唯一在重启后还有意义的东西。null = 未绑定。
+     */
+    public static String slotFile;
+    /** 槽位别名：null / 空串 = 用蓝图原名。 */
+    public static String slotAlias;
+
     private BarConfig(){
     }
 
@@ -75,6 +83,12 @@ public final class BarConfig{
                 }
             }
 
+            Jval slot = root.get("slot");
+            if(slot != null){
+                slotFile = emptyToNull(slot.getString("file", null));
+                slotAlias = emptyToNull(slot.getString("alias", null));
+            }
+
             Jval t = root.get("test");
             if(t != null){
                 clicks = Math.max(0, t.getInt("clicks", clicks));
@@ -86,6 +100,10 @@ public final class BarConfig{
             backup(file);
             defaults();
         }
+    }
+
+    private static String emptyToNull(String s){
+        return s == null || s.isEmpty() ? null : s;
     }
 
     private static void readColor(Jval obj, String name, Color target){
@@ -127,6 +145,11 @@ public final class BarConfig{
             w.put("settings", writeWindow(settingsWindow));
             s.put("windows", w);
             root.put("settings", s);
+
+            Jval slot = Jval.newObject();
+            if(slotFile != null) slot.put("file", slotFile);
+            if(slotAlias != null) slot.put("alias", slotAlias);
+            root.put("slot", slot);
 
             Jval t = Jval.newObject();
             t.put("clicks", clicks);

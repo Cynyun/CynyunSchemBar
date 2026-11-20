@@ -2,29 +2,37 @@ package test;
 
 import arc.Core;
 import arc.math.Mathf;
+import arc.math.geom.Vec2;
+import arc.scene.ui.layout.Table;
 import mindustry.Vars;
 import mindustry.game.Schematic;
 
 /**
- * 蓝图槽位窗（测试版）：一个槽位 + 一个“编辑”开关。
+ * 绑定蓝图槽位：一个槽位 + 一个“编辑”开关，是真正可用的功能组件（不是测试窗）。
  *
- * 行为完全由“编辑开关”决定（开关状态只存会话，不落盘；绑定也暂不落盘）：
+ * 行为完全由“编辑开关”决定：
  *   关 + 未绑定 → 按钮禁用，点了没反应
  *   关 + 已绑定 → 用原版逻辑放置这张蓝图
  *   开 + 未绑定 → 弹蓝图选择窗
- *   开 + 已绑定 → 弹蓝图信息窗（里面可以取消绑定、改别名）
+ *   开 + 已绑定 → 弹蓝图信息窗（取消绑定、改别名）
  *
- * 这样手机上也不需要右键/长按，单击就够——重绑定 = 打开编辑开关后点一下，选新的。
+ * 持久化：绑定关系与别名写进 config.json（与设置同一份文件、同一套 BarConfig）。
+ * 蓝图没有稳定 id，所以记的是文件名（不含扩展名），重启时在 {@code Vars.schematics.all()} 里按名找回；
+ * 库里还没加载完、或者用户之后才导入这张蓝图，act() 里每秒重试一次。
+ *
+ * 它自己是面板里的普通表格，位置由父表决定；只有选择窗/信息窗/预览浮层是挂在 hudGroup 上的窗口。
  */
-public class BarSlotWindow extends BarWindow{
+public class BarSlot extends Table{
 
     /** 槽位按钮的最小宽度：够放“未绑定”和常见的蓝图名。 */
     public static final float ACTION_MIN = 132f;
-    /** 槽位窗与主面板之间的间距。 */
-    private static final float PANEL_GAP = 8f;
 
-    /** 位置只存会话：每个实例自带一个 WindowState，不经过 BarConfig 的读写。 */
-    private final BarConfig.WindowState state = new BarConfig.WindowState();
+    /** 悬停多久弹出预览、离开多久收起。 */
+    private static final float HOVER_DELAY = 0.5f, HIDE_DELAY = 0.2f;
+    /** 库里暂时找不到绑定的蓝图时，隔多久再找一次。 */
+    private static final float RESOLVE_DELAY = 1f;
+    /** 别名连续输入时，停手多久落盘（每敲一个字写盘太浪费）。 */
+    private static final float SAVE_DELAY = 0.4f;
 
     private final BarButton action, edit;
 
@@ -33,6 +41,9 @@ public class BarSlotWindow extends BarWindow{
     /** 编辑开关，只存内存。 */
     private boolean editing;
 
+    /** 存档里记下的文件名：库还没加载完时先留着，act() 里重试。 */
+    private String pendingFile;
+
     private BarSchematicPicker picker;
     private BarSchematicInfoWindow info;
 
@@ -40,12 +51,11 @@ public class BarSlotWindow extends BarWindow{
     private BarSchematicInfoPopup preview;
     private float hoverTime, hideTime;
 
-    /** 悬停多久弹出预览、离开多久收起。 */
-    private static final float HOVER_DELAY = 0.5f, HIDE_DELAY = 0.2f;
+    private float resolveTime, saveTime;
+    /** 别名改过、还没写盘。 */
+    private boolean dirty;
 
-    public BarSlotWindow(){
-        super(200f, 36f);
-        margin(6f, 8f, 6f, 8f);
+    public BarSlot(){
         defaults().pad(2f);
 
         action = new BarButton("未绑定").ellipsis(true);
@@ -56,16 +66,51 @@ public class BarSlotWindow extends BarWindow{
         add(action).height(24f).minWidth(ACTION_MIN).growX();
         add(edit).size(40f, 24f);
 
+        restore();
         refresh();
-        applyLayout();
+    }
+
+    // ------------------------------------------------------------------ 持久化
+
+    /** 启动时从 config.json 恢复绑定与别名。 */
+    private void restore(){
+        alias = emptyToNull(BarConfig.slotAlias);
+        pendingFile = emptyToNull(BarConfig.slotFile);
+        bound = pendingFile == null ? null : lookup(pendingFile);
+        if(bound != null) pendingFile = null;
+    }
+
+    /**
+     * 按文件名找回蓝图。
+     *
+     * mod 蓝图与创意工坊蓝图也可能同名，所以优先认 saves/schematics 里的那张。
+     * 名字不能叫 find：Group.find(String) 已经存在，同参数静态方法会冲突。
+     */
+    private static Schematic lookup(String name){
+        if(Vars.schematics == null) return null;
+
+        Schematic fallback = null;
+        for(Schematic s : Vars.schematics.all()){
+            if(s.file == null || !s.file.name().equals(name)) continue;
+            if(Vars.schematicDirectory != null && s.file.parent().equals(Vars.schematicDirectory)) return s;
+            if(fallback == null) fallback = s;
+        }
+        return fallback;
+    }
+
+    /** 绑定/别名一变就写盘：和设置共用 BarConfig → config.json。 */
+    private void persist(){
+        // 没有 file 的蓝图（例如原版自带的 loadout）没法按名找回，只能放弃落盘、保留会话内绑定
+        BarConfig.slotFile = bound != null && bound.file != null ? bound.file.name() : null;
+        BarConfig.slotAlias = emptyToNull(alias);
+        BarConfig.save();
+    }
+
+    private static String emptyToNull(String s){
+        return s == null || s.isEmpty() ? null : s;
     }
 
     // ------------------------------------------------------------------ 状态
-
-    @Override
-    protected BarConfig.WindowState state(){
-        return state;
-    }
 
     public Schematic bound(){
         return bound;
@@ -75,9 +120,11 @@ public class BarSlotWindow extends BarWindow{
         return alias;
     }
 
-    /** 别名由信息窗实时写入；null / 空串表示“用蓝图原名”。 */
+    /** 别名由信息窗实时写入；null / 空串表示“用蓝图原名”。落盘做了 0.4 秒防抖。 */
     public void alias(String value){
         alias = value;
+        dirty = true;
+        saveTime = SAVE_DELAY;
         refresh();
     }
 
@@ -89,12 +136,14 @@ public class BarSlotWindow extends BarWindow{
     }
 
     public void setBound(Schematic s){
-        // 解绑时信息窗/预览失去意义，先关掉再改状态
         if(s == null) closeInfo();
         hidePreview();
         bound = s;
         alias = null;
+        pendingFile = null;
+        dirty = false;
         refresh();
+        persist();
     }
 
     public void unbind(){
@@ -186,6 +235,11 @@ public class BarSlotWindow extends BarWindow{
         if(info != null){
             info.remove();
             info = null;
+            // 关窗时把没写完的别名立刻落盘，不用等防抖
+            if(dirty){
+                dirty = false;
+                persist();
+            }
         }
     }
 
@@ -198,6 +252,21 @@ public class BarSlotWindow extends BarWindow{
     @Override
     public void act(float delta){
         super.act(delta);
+
+        if(dirty && (saveTime -= delta) <= 0f){
+            dirty = false;
+            persist();
+        }
+
+        // 启动时蓝图库可能还没加载完；也可能用户之后才导入这张蓝图
+        if(bound == null && pendingFile != null && (resolveTime -= delta) <= 0f){
+            resolveTime = RESOLVE_DELAY;
+            bound = lookup(pendingFile);
+            if(bound != null){
+                pendingFile = null;
+                refresh();
+            }
+        }
 
         boolean allowed = bound != null && isBound() && !editing && picker == null && info == null;
         if(!allowed){
@@ -223,11 +292,14 @@ public class BarSlotWindow extends BarWindow{
         preview = new BarSchematicInfoPopup(bound);
         Vars.ui.hudGroup.addChild(preview);
 
-        // 优先放窗口右侧，右边放不下翻到左侧；竖直方向与窗口底边对齐后夹进屏幕
+        // 槽位现在是面板里的子元素，x/y 是面板内坐标：必须换算到 stage，否则浮层会贴错地方
+        Vec2 p = action.localToStageCoordinates(new Vec2(0f, 0f));
         float w = preview.getWidth(), h = preview.getHeight();
-        float px = x + getWidth() + 8f;
-        if(px + w > Core.graphics.getWidth()) px = Math.max(0f, x - w - 8f);
-        float py = Mathf.clamp(y + getHeight() - h, 0f, Math.max(0f, Core.graphics.getHeight() - h));
+
+        // 优先放按钮右侧，右边放不下翻到左侧；竖直方向与按钮底边对齐后夹进屏幕
+        float px = p.x + action.getWidth() + 8f;
+        if(px + w > Core.graphics.getWidth()) px = Math.max(0f, p.x - w - 8f);
+        float py = Mathf.clamp(p.y + action.getHeight() - h, 0f, Math.max(0f, Core.graphics.getHeight() - h));
 
         preview.setPosition(Mathf.round(px), Mathf.round(py));
         preview.toFront();
@@ -242,19 +314,12 @@ public class BarSlotWindow extends BarWindow{
 
     // ------------------------------------------------------------------ 布局
 
-    /** 默认贴在主面板正下方，跟着面板左上角走。 */
-    @Override
-    protected void defaultSpawn(){
-        float panelY = Core.graphics.getHeight() - BarPanel.HEIGHT - BarPanel.TOP_OFFSET;
-        setPosition(BarPanel.MARGIN, Mathf.round(Math.max(0f, panelY - height - PANEL_GAP)));
-    }
-
-    @Override
-    public void resetToDefault(){
-        closePicker();
-        closeInfo();
-        hidePreview();
-        super.resetToDefault();
+    private void refresh(){
+        action.text(displayName());
+        // 未绑定且不在编辑态时按钮没有意义，直接禁用（禁用后 BarButton 不再发 ChangeEvent）
+        action.setDisabled(bound == null && !editing);
+        // 槽位宽度由面板的列宽决定，文字变了只需要让界面重新算一次 pref
+        invalidateHierarchy();
     }
 
     @Override
@@ -263,37 +328,5 @@ public class BarSlotWindow extends BarWindow{
         closePicker();
         closeInfo();
         return super.remove();
-    }
-
-    /** 窗口尺寸变化：自己先重排，再把两个子窗口带一遍（它们的位置依赖槽位窗）。 */
-    public void onResize(){
-        applyLayout();
-        if(picker != null && picker.parent != null) picker.applyLayout();
-        if(info != null && info.parent != null) info.applyLayout();
-    }
-
-    private void refresh(){
-        action.text(displayName());
-        // 未绑定且不在编辑态时按钮没有意义，直接禁用（禁用后 BarButton 不再发 ChangeEvent）
-        action.setDisabled(bound == null && !editing);
-
-        // 文字变长会改窗口宽度：以左上角为锚点重新摆，避免窗口往右长出去
-        float keepTop = y + height;
-        pack();
-
-        // 蓝图名可能很长：宽度封顶，多出来的字由 ellipsis 截掉，否则会顶出屏幕
-        float maxW = Math.max(160f, Core.graphics.getWidth() - 2f * BarPanel.MARGIN);
-        if(width > maxW){
-            setWidth(maxW);
-            invalidate();
-        }
-
-        place(keepTop);
-    }
-
-    private void place(float keepTop){
-        float maxX = Math.max(0f, Core.graphics.getWidth() - width);
-        float maxY = Math.max(0f, Core.graphics.getHeight() - height);
-        setPosition(Mathf.round(Mathf.clamp(x, 0f, maxX)), Mathf.round(Mathf.clamp(keepTop - height, 0f, maxY)));
     }
 }

@@ -3,6 +3,7 @@ package test;
 import arc.Core;
 import arc.input.KeyCode;
 import arc.math.Mathf;
+import arc.math.geom.Vec2;
 import arc.scene.Element;
 import arc.scene.event.InputEvent;
 import arc.scene.event.InputListener;
@@ -23,7 +24,7 @@ public class BarSchematicInfoWindow extends BarWindow{
 
     public static final float WIDTH = 380f, HEIGHT = 400f;
 
-    private final BarSlotWindow slot;
+    private final BarSlot slot;
     private final Schematic schem;
     private final BarConfig.WindowState state = new BarConfig.WindowState();
     private final BarTextField alias;
@@ -54,7 +55,7 @@ public class BarSchematicInfoWindow extends BarWindow{
         }
     };
 
-    public BarSchematicInfoWindow(BarSlotWindow slot){
+    public BarSchematicInfoWindow(BarSlot slot){
         super(WIDTH, HEIGHT);
         this.slot = slot;
         this.schem = slot.bound();
@@ -116,9 +117,11 @@ public class BarSchematicInfoWindow extends BarWindow{
         float maxX = Math.max(0f, Core.graphics.getWidth() - width);
         float maxY = Math.max(0f, Core.graphics.getHeight() - height);
 
-        float gx = slot.x + slot.getWidth() + 8f;
-        if(gx > maxX) gx = Math.max(0f, slot.x - width - 8f);
-        float gy = slot.y + slot.getHeight() - height;
+        // 槽位是面板里的子元素，x/y 是面板内坐标：换算到 stage 才能和本窗口的屏幕坐标对齐
+        Vec2 p = slot.localToStageCoordinates(new Vec2(0f, 0f));
+        float gx = p.x + slot.getWidth() + 8f;
+        if(gx > maxX) gx = Math.max(0f, p.x - width - 8f);
+        float gy = p.y + slot.getHeight() - height;
 
         setPosition(Mathf.round(Mathf.clamp(gx, 0f, maxX)), Mathf.round(Mathf.clamp(gy, 0f, maxY)));
     }

@@ -46,7 +46,7 @@ public class BarSchematicPicker extends BarWindow{
     private static float sessionW = DEFAULT_W, sessionH = DEFAULT_H;
     private static final Seq<String> selectedTags = new Seq<>();
 
-    private final BarSlotWindow slot;
+    private final BarSlot slot;
     private final BarConfig.WindowState state = new BarConfig.WindowState();
 
     private final Table grid = new Table(), chips = new Table();
@@ -66,7 +66,7 @@ public class BarSchematicPicker extends BarWindow{
     /** 当前网格排了几列。列数变了才重建卡片，拖动缩放时不至于每像素重建一次。 */
     private int columns = -1;
 
-    public BarSchematicPicker(BarSlotWindow slot){
+    public BarSchematicPicker(BarSlot slot){
         super(sessionW, sessionH);
         this.slot = slot;
 

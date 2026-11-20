@@ -15,8 +15,12 @@ import arc.scene.ui.layout.Table;
  */
 public class BarPanel extends BarWindow{
 
-    /** 面板尺寸与边距，先用常量，后续由设置项驱动。 */
-    public static final float WIDTH = 384f, HEIGHT = 352f, MARGIN = 24f, TOP_OFFSET = 24f;
+    /**
+     * 面板尺寸与边距，先用常量，后续由设置项驱动。
+     * 高度 384：比上一版多 32，刚好把“绑定槽位”那一行 + 分隔线放进来，
+     * 又不至于把下面的滚轮列表压到它的 minHeight 以下（压到以下整张表就会溢出面板）。
+     */
+    public static final float WIDTH = 384f, HEIGHT = 384f, MARGIN = 24f, TOP_OFFSET = 24f;
 
     /** 面板名字：展开态在标题行，收起态是窄条上唯一的文字。 */
     private static final String TITLE = "C Y N Y U N   ·   S C H E M B A R";
@@ -29,6 +33,9 @@ public class BarPanel extends BarWindow{
 
     /** 展开态内容与收起态窄条，同一时刻只挂一个到面板上。 */
     private final Table content, collapsed;
+
+    /** 绑定蓝图槽位：真功能组件，绑定关系/别名都落在 config.json。 */
+    private final BarSlot slot;
 
     /** 唯一保留状态的按钮（开关），状态由按钮自己存，面板只读。 */
     private final BarButton switchBtn;
@@ -72,7 +79,14 @@ public class BarPanel extends BarWindow{
         content.add(BarTheme.dimText("UI 组件测试：线框按钮 / 输入框 / 自绘滚动条")).growX().left().height(16f).row();
         content.add(new BarDivider()).growX().height(1f).padTop(4f).padBottom(6f).row();
 
-        // ① 输入框两种外观：底线 / 侧标。两者都实现 BarControl，按上去不会拖动窗口。
+        // ① 绑定槽位（真功能组件）：编辑开关 + 槽位按钮。绑定关系与别名写进 config.json，
+        // 重启后按蓝图文件名找回。槽位是面板的子元素，它的子窗口会自己换算到 stage 坐标。
+        slot = new BarSlot();
+        content.add(slot).growX().height(28f).padTop(2f).row();
+
+        content.add(new BarDivider()).growX().height(1f).padTop(4f).padBottom(6f).row();
+
+        // ② 输入框两种外观：底线 / 侧标。两者都实现 BarControl，按上去不会拖动窗口。
         // 文本存进 Core.settings（不是 config.json）：Mindustry 关掉了 settings 自动写盘，
         // 正常退出时由 Control 统一 forceSave，够“短暂持久化”用。
         underlineField = new BarTextField(Core.settings.getString(KEY_UNDERLINE, ""), "点这里输入（底线）", BarTextField.MAX_LENGTH);
@@ -89,7 +103,7 @@ public class BarPanel extends BarWindow{
 
         content.add(new BarDivider()).growX().height(1f).padTop(2f).padBottom(6f).row();
 
-        // ② 普通按钮行：四个等宽按钮，最后一个故意禁用，用来确认禁用态样式
+        // ③ 普通按钮行：四个等宽按钮，最后一个故意禁用，用来确认禁用态样式
         Table bar = new Table();
         bar.defaults().growX().height(30f).pad(2f);
         // 一次性按钮：点完恢复常态（默认），只有开关用 stateful(true) 保留选中
@@ -102,11 +116,11 @@ public class BarPanel extends BarWindow{
         bar.add(disabled);
         content.add(bar).growX().row();
 
-        // ③ 状态文字，按钮是否生效看这里
+        // ④ 状态文字，按钮是否生效看这里
         statusLabel = BarTheme.dimText("");
         content.add(statusLabel).growX().left().height(16f).row();
 
-        // ④ 滚轮列表：BarScroll 自带 1px 轨道 + 2px 强调色滑块
+        // ⑤ 滚轮列表：BarScroll 自带 1px 轨道 + 2px 强调色滑块
         Table list = new Table();
         list.top();
         // 列表项也是一次性按钮：不保留选中状态，当前选择只体现在下方文字里。
@@ -119,7 +133,7 @@ public class BarPanel extends BarWindow{
         }
         content.add(new BarScroll(list)).grow().minHeight(88f).padTop(2f).row();
 
-        // ⑤ 列表选择结果
+        // ⑥ 列表选择结果
         selectedLabel = BarTheme.dimText("");
         content.add(selectedLabel).growX().left().height(16f).row();
 
