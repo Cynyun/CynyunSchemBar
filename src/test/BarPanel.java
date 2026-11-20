@@ -16,7 +16,7 @@ import arc.scene.ui.layout.Table;
 public class BarPanel extends BarWindow{
 
     /** 面板尺寸与边距，先用常量，后续由设置项驱动。 */
-    public static final float WIDTH = 384f, HEIGHT = 300f, MARGIN = 24f, TOP_OFFSET = 24f;
+    public static final float WIDTH = 384f, HEIGHT = 352f, MARGIN = 24f, TOP_OFFSET = 24f;
 
     /** 面板名字：展开态在标题行，收起态是窄条上唯一的文字。 */
     private static final String TITLE = "C Y N Y U N   ·   S C H E M B A R";
@@ -24,12 +24,22 @@ public class BarPanel extends BarWindow{
     /** 收起态显示的名字：标题那串字距拉得宽，窄条上换成紧凑写法，否则收起条和展开时一样宽。 */
     private static final String SHORT_NAME = "Cynyun SchemBar";
 
+    /** 两个输入框的持久化键：放 Core.settings（不是 config.json），仅用于测试组件本身。 */
+    private static final String KEY_UNDERLINE = "schembar-input-underline", KEY_SIDE = "schembar-input-side";
+
     /** 展开态内容与收起态窄条，同一时刻只挂一个到面板上。 */
     private final Table content, collapsed;
 
     /** 唯一保留状态的按钮（开关），状态由按钮自己存，面板只读。 */
     private final BarButton switchBtn;
     private final Label statusLabel, selectedLabel;
+
+    /** 两种输入框外观的样例，顺便验证 Core.settings 的短暂持久化。 */
+    private final BarTextField underlineField, sideField;
+    private final Label inputEcho;
+
+    /** 上次写进 Core.settings 的文本，只在真变化时才 put，避免每帧写。 */
+    private String shownUnderline = "", shownSide = "";
 
     private boolean toggled;
     private int shownClicks = Integer.MIN_VALUE, shownSelected = Integer.MIN_VALUE;
@@ -59,10 +69,24 @@ public class BarPanel extends BarWindow{
         head.add(new BarButton("−").borderless(true).onClick(() -> setCollapsed(true))).size(22f, 18f);
         content.add(head).growX().height(20f).row();
 
-        content.add(BarTheme.dimText("UI 组件测试：线框按钮 / 自绘滚动条")).growX().left().height(16f).row();
+        content.add(BarTheme.dimText("UI 组件测试：线框按钮 / 输入框 / 自绘滚动条")).growX().left().height(16f).row();
         content.add(new BarDivider()).growX().height(1f).padTop(4f).padBottom(6f).row();
 
-        // ① 普通按钮行：四个等宽按钮，最后一个故意禁用，用来确认禁用态样式
+        // ① 输入框两种外观：底线 / 侧标。两者都实现 BarControl，按上去不会拖动窗口。
+        // 文本存进 Core.settings（不是 config.json）：Mindustry 关掉了 settings 自动写盘，
+        // 正常退出时由 Control 统一 forceSave，够“短暂持久化”用。
+        underlineField = new BarTextField(Core.settings.getString(KEY_UNDERLINE, ""), "点这里输入（底线）", 40);
+        content.add(inputRow("底线", underlineField)).growX().height(24f).padTop(4f).row();
+
+        sideField = new BarTextField(Core.settings.getString(KEY_SIDE, ""), "点这里输入（侧标）", 40, BarTextField.Style.SIDE);
+        content.add(inputRow("侧标", sideField)).growX().height(24f).row();
+
+        inputEcho = BarTheme.dimText("");
+        content.add(inputEcho).growX().left().height(16f).row();
+
+        content.add(new BarDivider()).growX().height(1f).padTop(2f).padBottom(6f).row();
+
+        // ② 普通按钮行：四个等宽按钮，最后一个故意禁用，用来确认禁用态样式
         Table bar = new Table();
         bar.defaults().growX().height(30f).pad(2f);
         // 一次性按钮：点完恢复常态（默认），只有开关用 stateful(true) 保留选中
@@ -75,11 +99,11 @@ public class BarPanel extends BarWindow{
         bar.add(disabled);
         content.add(bar).growX().row();
 
-        // ② 状态文字，按钮是否生效看这里
+        // ③ 状态文字，按钮是否生效看这里
         statusLabel = BarTheme.dimText("");
         content.add(statusLabel).growX().left().height(16f).row();
 
-        // ③ 滚轮列表：BarScroll 自带 1px 轨道 + 2px 强调色滑块
+        // ④ 滚轮列表：BarScroll 自带 1px 轨道 + 2px 强调色滑块
         Table list = new Table();
         list.top();
         // 列表项也是一次性按钮：不保留选中状态，当前选择只体现在下方文字里。
@@ -90,9 +114,9 @@ public class BarPanel extends BarWindow{
             item.onClick(() -> onSelect(index));
             list.add(item).growX().height(28f).padBottom(3f).row();
         }
-        content.add(new BarScroll(list)).growX().height(128f).padTop(2f).row();
+        content.add(new BarScroll(list)).grow().minHeight(88f).padTop(2f).row();
 
-        // ④ 列表选择结果
+        // ⑤ 列表选择结果
         selectedLabel = BarTheme.dimText("");
         content.add(selectedLabel).growX().left().height(16f).row();
 
@@ -105,8 +129,20 @@ public class BarPanel extends BarWindow{
 
         add(content).grow();
 
+        shownUnderline = underlineField.text();
+        shownSide = sideField.text();
+
         refresh();
+        updateEcho();
         applyLayout();
+    }
+
+    /** 标签 + 输入框的一行，“底线”“侧标”这类说明放左边。 */
+    private static Table inputRow(String label, BarTextField field){
+        Table row = new Table();
+        row.add(BarTheme.dimText(label)).left().width(32f);
+        row.add(field).growX().growY();
+        return row;
     }
 
     @Override
@@ -127,6 +163,40 @@ public class BarPanel extends BarWindow{
         if(BarConfig.clicks != shownClicks || BarConfig.selected != shownSelected){
             refresh();
         }
+        syncInputs();
+    }
+
+    /** 输入框内容变了才写 Core.settings 并刷新回显（每帧 setText 会让 Label 反复失效）。 */
+    private void syncInputs(){
+        String u = underlineField.text(), s = sideField.text();
+        boolean changed = false;
+
+        if(!u.equals(shownUnderline)){
+            shownUnderline = u;
+            Core.settings.put(KEY_UNDERLINE, u);
+            changed = true;
+        }
+        if(!s.equals(shownSide)){
+            shownSide = s;
+            Core.settings.put(KEY_SIDE, s);
+            changed = true;
+        }
+
+        if(changed) updateEcho();
+    }
+
+    private void updateEcho(){
+        inputEcho.setText("输入回显：" + echo(shownUnderline) + "   ·   " + echo(shownSide));
+    }
+
+    private static String echo(String s){
+        return s.isEmpty() ? "（空）" : s;
+    }
+
+    /** 清空两个输入框；下一帧 act() 会把空串写回 Core.settings。 */
+    private void clearInputs(){
+        underlineField.text("");
+        sideField.text("");
     }
 
     // ------------------------------------------------------------------ 收起 / 展开
@@ -187,6 +257,7 @@ public class BarPanel extends BarWindow{
     public void resetToDefault(){
         // 恢复默认位置时先展开，否则会用收起态的小尺寸算落点
         setCollapsed(false);
+        clearInputs();
         super.resetToDefault();
     }
 
@@ -207,6 +278,7 @@ public class BarPanel extends BarWindow{
         toggled = false;
         switchBtn.setChecked(false);
         BarConfig.save();
+        clearInputs();
         refresh();
     }
 
