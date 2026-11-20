@@ -140,7 +140,9 @@ public class BarPanel extends BarWindow{
     /** 标签 + 输入框的一行，“底线”“侧标”这类说明放左边。 */
     private static Table inputRow(String label, BarTextField field){
         Table row = new Table();
-        row.add(BarTheme.dimText(label)).left().width(32f);
+        // 标签列给固定宽度再留 12px 间隙：中文两个字正好占满 32px，
+        // 不加间隙时输入框的线会直接顶在字后面，看着像同一段文字。
+        row.add(BarTheme.dimText(label)).left().width(32f).padRight(12f);
         row.add(field).growX().growY();
         return row;
     }
