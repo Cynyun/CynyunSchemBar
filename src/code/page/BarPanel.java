@@ -62,7 +62,10 @@ public class BarPanel extends BarWindow implements BarPickerHost{
     /** 同一时间只允许一个浮层/弹窗：新的打开前先关旧的。 */
     private BarMenu menu;
     private BarSchematicInfoPopup preview;
-    private BarEntryButton hoverEntry;
+    /** 浮层当前锚在哪个按钮上：指针还在它上面就保留，离开后走宽限期再收。 */
+    private BarEntryButton previewOwner;
+    /** 指针从按钮挪到浮层、或从一格挪到相邻一格时的宽限时间，避免闪一下。 */
+    private float previewGrace;
 
     /** 选择窗与“这次要绑给谁”。pickEntry 非 null = 重新选择，null = 新增一条。 */
     private BarSchematicPicker picker;
@@ -490,8 +493,15 @@ public class BarPanel extends BarWindow implements BarPickerHost{
         return editing;
     }
 
-    void setHoverEntry(BarEntryButton button){
-        hoverEntry = button;
+    /** 指针正指着某个蓝图按钮：先记下来，浮层的去留由 act() 统一决定。 */
+    void hovering(BarEntryButton button){
+        previewOwner = button;
+        previewGrace = 0f;
+    }
+
+    /** 按钮报“指针已经离开我”：只有浮层还锚在它身上时才解除锚定。 */
+    void releasePreview(BarEntryButton button){
+        if(previewOwner == button) previewOwner = null;
     }
 
     /** 普通态点按钮：解析到蓝图就放，解析不到就说一声（配置保留，等蓝图回来）。 */
@@ -528,12 +538,16 @@ public class BarPanel extends BarWindow implements BarPickerHost{
         Schematic s = button.schematic();
         if(s == null || editing) return;
 
+        previewOwner = button;
+        previewGrace = 0f;
+
         if(preview != null && preview.schematic() == s){
             placePreview(button);
             return;
         }
 
         hidePreview();
+        previewOwner = button;
         preview = new BarSchematicInfoPopup(s);
         if(Vars.ui == null || Vars.ui.hudGroup == null) return;
         Vars.ui.hudGroup.addChild(preview);
@@ -559,6 +573,8 @@ public class BarPanel extends BarWindow implements BarPickerHost{
     }
 
     void hidePreview(){
+        previewOwner = null;
+        previewGrace = 0f;
         if(preview != null){
             preview.remove();
             preview = null;
@@ -570,11 +586,16 @@ public class BarPanel extends BarWindow implements BarPickerHost{
         super.act(delta);
 
         if(preview != null){
-            // 指针在按钮上、在浮层上、或者手指还按着 → 留着；否则收掉
+            // 指针在按钮上、在浮层上、或者手指还按着 → 留着；都不在就等宽限期过了再收。
+            // 宽限期是必需的：指针从按钮挪到浮层要横跨几像素，中间那一帧两边都不算“在里面”。
             boolean keep = preview.hovered()
-                || (hoverEntry != null && hoverEntry.schematic() == preview.schematic())
+                || (previewOwner != null && previewOwner.isOver())
                 || Core.input.isTouched();
-            if(!keep) hidePreview();
+            if(keep){
+                previewGrace = 0f;
+            }else if((previewGrace += delta) >= 0.12f){
+                hidePreview();
+            }
         }
     }
 

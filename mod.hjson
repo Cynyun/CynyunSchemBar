@@ -21,3 +21,6 @@ minGameVersion: 160.3
 
 #this is a java mod
 java: true
+
+#this is a multiplayer-compatible mod
+hidden: true

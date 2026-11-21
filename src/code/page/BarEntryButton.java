@@ -15,7 +15,9 @@ import mindustry.game.Schematic;
  *   编辑态  点击 = 弹编辑菜单（改标题 / 重新选择 / 上移 / 下移 / 移除）
  *
  * 详情浮层由面板统一管：这里只负责“什么时候该开”，位置和生命周期都在 BarPanel。
- * 悬停走 enter/exit 而不是每帧 hit：一列十几格、每格每帧走一遍场景树会明显掉帧。
+ * 悬停判定用 Button 自带的 isOver()（ClickListener 里的字段，O(1)），不做每帧场景树 hit。
+ * 不用 enter/exit 累时间：ScrollPane 里子元素的重排/裁剪会让 enter/exit 顺序不可靠，
+ * 表现为“要抖一下鼠标才出浮层”。
  */
 public class BarEntryButton extends BarButton{
 
@@ -32,7 +34,9 @@ public class BarEntryButton extends BarButton{
     /** 解析结果，null = 未绑定或库里已经找不到。 */
     private final Schematic schematic;
 
-    private boolean over, touchOver, hoverPending;
+    private boolean touchOver;
+    /** 是否已经让面板弹出了自己的浮层（防止每帧重复创建）。 */
+    private boolean shown;
     private float hoverTime, pressTime;
     private float longAt = -100f;
 
@@ -47,30 +51,16 @@ public class BarEntryButton extends BarButton{
         ellipsis(true);
         onClick(this::clicked);
 
+        // 只跟踪“手指按在按钮上”这一件事：鼠标悬停改成每帧读 isOver()，见 act()
         addListener(new InputListener(){
             @Override
             public void enter(InputEvent event, float x, float y, int pointer, Element fromActor){
-                if(pointer == -1){
-                    if(over) return;
-                    over = true;
-                    hoverTime = 0f;
-                    hoverPending = schematic != null && !owner.isEditing();
-                    owner.setHoverEntry(BarEntryButton.this);
-                }else{
-                    touchOver = true;
-                }
+                if(pointer != -1) touchOver = true;
             }
 
             @Override
             public void exit(InputEvent event, float x, float y, int pointer, Element toActor){
-                if(pointer != -1){
-                    if(!inside(toActor)) touchOver = false;
-                    return;
-                }
-                if(!over || inside(toActor)) return;
-                over = false;
-                hoverPending = false;
-                owner.setHoverEntry(null);
+                if(pointer != -1 && !inside(toActor)) touchOver = false;
             }
         });
     }
@@ -88,17 +78,23 @@ public class BarEntryButton extends BarButton{
         super.act(delta);
 
         if(owner.isEditing()){
-            hoverPending = false;
+            hoverTime = 0f;
+            release();
             return;
         }
 
-        // 鼠标悬停：停够时间才弹，扫过去不弹
-        if(over && hoverPending){
+        // 鼠标悬停：停够时间才弹，扫过去不弹。
+        // 指针在按钮上 → 先告诉面板“我现在指着谁”，面板据此保留浮层、避免格子之间来回闪。
+        if(isOver() && schematic != null){
+            owner.hovering(this);
             hoverTime += delta;
-            if(hoverTime >= HOVER_DELAY){
-                hoverPending = false;
+            if(!shown && hoverTime >= HOVER_DELAY){
+                shown = true;
                 owner.showPreview(this);
             }
+        }else{
+            hoverTime = 0f;
+            release();
         }
 
         // 触摸长按：不依赖按钮内部的 ClickListener（它默认会吃掉事件），
@@ -108,10 +104,19 @@ public class BarEntryButton extends BarButton{
             if(pressTime >= LONG_PRESS){
                 pressTime = 0f;
                 longAt = Time.time;
+                shown = true;
                 owner.showPreview(this);
             }
         }else{
             pressTime = 0f;
+        }
+    }
+
+    /** 指针离开：浮层不立刻收，交给面板判断（可能正挪到浮层上）。 */
+    private void release(){
+        if(shown){
+            shown = false;
+            owner.releasePreview(this);
         }
     }
 
