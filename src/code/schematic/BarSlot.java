@@ -24,8 +24,11 @@ import mindustry.game.Schematic;
  */
 public class BarSlot extends Table implements BarPickerHost{
 
-    /** 槽位按钮的最小宽度：够放“未绑定”和常见的蓝图名。 */
+    /** 槽位按钮的最小宽度（逻辑单位，用时乘 Scl）：够放“未绑定”和常见的蓝图名。 */
     public static final float ACTION_MIN = 132f;
+
+    /** 按钮/行高（逻辑单位）。 */
+    private static final float ROW_H = 24f, EDIT_W = 40f, PAD = 2f, GAP = 8f;
 
     /** 悬停多久弹出预览、离开多久收起。 */
     private static final float HOVER_DELAY = 0.5f, HIDE_DELAY = 0.2f;
@@ -56,15 +59,15 @@ public class BarSlot extends Table implements BarPickerHost{
     private boolean dirty;
 
     public BarSlot(){
-        defaults().pad(2f);
+        defaults().pad(BarTheme.u(PAD));
 
         action = new BarButton("未绑定").ellipsis(true);
         action.onClick(this::onAction);
 
         edit = new BarButton("编辑").borderless(true).stateful(true).onClick(this::onEditToggle);
 
-        add(action).height(24f).minWidth(ACTION_MIN).growX();
-        add(edit).size(40f, 24f);
+        add(action).height(BarTheme.u(ROW_H)).minWidth(BarTheme.u(ACTION_MIN)).growX();
+        add(edit).size(BarTheme.u(EDIT_W), BarTheme.u(ROW_H));
 
         restore();
         refresh();
@@ -305,8 +308,9 @@ public class BarSlot extends Table implements BarPickerHost{
         float w = preview.getWidth(), h = preview.getHeight();
 
         // 优先放按钮右侧，右边放不下翻到左侧；竖直方向与按钮底边对齐后夹进屏幕
-        float px = p.x + action.getWidth() + 8f;
-        if(px + w > Core.graphics.getWidth()) px = Math.max(0f, p.x - w - 8f);
+        float gap = BarTheme.u(GAP);
+        float px = p.x + action.getWidth() + gap;
+        if(px + w > Core.graphics.getWidth()) px = Math.max(0f, p.x - w - gap);
         float py = Mathf.clamp(p.y + action.getHeight() - h, 0f, Math.max(0f, Core.graphics.getHeight() - h));
 
         preview.setPosition(Mathf.round(px), Mathf.round(py));

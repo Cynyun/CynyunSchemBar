@@ -26,6 +26,10 @@ public abstract class BarWindow extends Table{
     private boolean dragging;
     private float dragLastX, dragLastY;
 
+    /** 右下角缩放手柄。只在 enableResize() 之后存在。 */
+    private BarResizeGrip grip;
+    private float minW, minH;
+
     protected BarWindow(float width, float height){
         // Table 负责子元素布局；关闭变换后 Group.draw 用“父坐标偏移”的方式画子元素，
         // 所以这里的 x/y 仍是屏幕坐标，不必手动换算。
@@ -36,6 +40,74 @@ public abstract class BarWindow extends Table{
         // 拖动就无从谈起。代价是窗口矩形内的空白处不再允许穿透建造——悬浮窗本来也不该穿透。
         touchable = Touchable.enabled;
         installDrag();
+    }
+
+    /**
+     * 允许拖动右下角改尺寸。最小值由调用方按内容算好传进来（标题行宽度、列宽等），
+     * 这里只负责夹取与保持左上角不动。
+     */
+    protected void enableResize(float minW, float minH){
+        this.minW = Math.max(1f, minW);
+        this.minH = Math.max(1f, minH);
+
+        if(grip == null){
+            grip = new BarResizeGrip(this, this.minW, this.minH, new BarResizeGrip.Handler(){
+                @Override
+                public void resize(float w, float h){
+                    applyResize(w, h);
+                }
+
+                @Override
+                public void resized(){
+                    // 松手才写盘：拖动过程中每像素 save() 会把磁盘打成筛子
+                    captureAnchor(true);
+                    onResizeEnd();
+                }
+            });
+        }
+        addChild(grip);
+        invalidate();
+    }
+
+    /** Table.clearChildren() 会连手柄一起清掉（收起/展开），换完子表要把它挂回来。 */
+    protected void reattachGrip(){
+        if(grip != null && grip.parent == null) addChild(grip);
+    }
+
+    /** 收起态不该有缩放手柄：窄条尺寸由文字决定。 */
+    protected void setGripVisible(boolean visible){
+        if(grip != null) grip.visible = visible;
+    }
+
+    /** 拖动尺寸中：左上角固定（高度变化时 y 补偿），并夹在屏幕内。 */
+    private void applyResize(float w, float h){
+        // 左上角固定：能长多宽取决于右边界还剩多少，能长多高取决于上边界到屏幕顶的距离
+        float maxW = Math.max(minW, Core.graphics.getWidth() - x);
+        float maxH = Math.max(minH, y + height);
+        float nw = Mathf.clamp(w, minW, maxW);
+        float nh = Mathf.clamp(h, minH, maxH);
+        float oldH = height;
+
+        setSize(Mathf.round(nw), Mathf.round(nh));
+        y = Mathf.clamp(y + oldH - height, 0f, Math.max(0f, Core.graphics.getHeight() - height));
+        invalidate();
+        onResize(getWidth(), getHeight());
+    }
+
+    /** 尺寸变了，子类在这里重排（选择窗要按新宽度重算列数）。 */
+    protected void onResize(float w, float h){
+    }
+
+    /** 用户松手：子类在这里把逻辑尺寸写进 config。 */
+    protected void onResizeEnd(){
+    }
+
+    @Override
+    public void layout(){
+        super.layout();
+        if(grip != null && grip.parent == this){
+            grip.setPosition(width - grip.getWidth(), 0f);
+        }
     }
 
     /** 这个窗口的位置存在哪（由 BarConfig 提供）。 */
@@ -146,8 +218,10 @@ public abstract class BarWindow extends Table{
         st.ux = availW > 0f ? Mathf.clamp(x / availW, 0f, 1f) : 0f;
         st.uy = availH > 0f ? Mathf.clamp(y / availH, 0f, 1f) : 0f;
 
-        st.anchorX = x <= SNAP ? -1 : x >= availW - SNAP ? 1 : 0;
-        st.anchorY = y <= SNAP ? -1 : y >= availH - SNAP ? 1 : 0;
+        // 阈值也跟着 Scl 走：手机上 10 物理像素太窄，手指根本贴不准
+        float snap = BarTheme.u(SNAP);
+        st.anchorX = x <= snap ? -1 : x >= availW - snap ? 1 : 0;
+        st.anchorY = y <= snap ? -1 : y >= availH - snap ? 1 : 0;
         st.present = true;
 
         // 只动贴边的轴：自由轴保持原值，避免取整误差导致松手瞬间位置微跳

@@ -32,7 +32,7 @@ public class BarColorField extends Table implements BarControl{
         hex = BarTheme.dimText("");
         hex.touchable = Touchable.disabled;
 
-        add(swatch).size(14f).padRight(6f);
+        add(swatch).size(BarTheme.u(14f)).padRight(BarTheme.u(6f));
         add(hex).left().growX();
 
         clicked(() -> {

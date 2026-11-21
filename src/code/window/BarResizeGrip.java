@@ -20,7 +20,7 @@ import arc.scene.event.Touchable;
  */
 public class BarResizeGrip extends Element{
 
-    /** 手柄正方形的边长。 */
+    /** 手柄正方形的边长（逻辑像素，实际用 BarTheme.u 换算）。 */
     public static final float SIZE = 16f;
 
     public interface Handler{
@@ -34,6 +34,8 @@ public class BarResizeGrip extends Element{
     private final Element target;
     private final float minW, minH;
     private final Handler handler;
+    /** 换算后的实际边长：命中判定与绘制都用它，否则手机上 16px 的三角根本按不到。 */
+    private final float gripSize;
 
     private float startW, startH, startX, startY;
     private boolean dragging;
@@ -47,7 +49,8 @@ public class BarResizeGrip extends Element{
         this.handler = handler;
 
         touchable = Touchable.enabled;
-        setSize(SIZE, SIZE);
+        gripSize = BarTheme.u(SIZE);
+        setSize(gripSize, gripSize);
 
         addListener(new InputListener(){
             @Override
@@ -100,7 +103,7 @@ public class BarResizeGrip extends Element{
     public Element hit(float x, float y, boolean touchable){
         if(touchable && this.touchable == Touchable.disabled) return null;
         if(x < 0f || y < 0f || x >= width || y >= height) return null;
-        if((width - x) + y > SIZE) return null;
+        if((width - x) + y > gripSize) return null;
         return this;
     }
 
@@ -113,9 +116,11 @@ public class BarResizeGrip extends Element{
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b,
             (dragging ? 1f : over ? 0.95f : 0.55f) * a);
         Lines.stroke(1f);
+        // 三条斜线按边长等比缩放：桌面上还是 5/9/13，手机上跟着放大
+        float m = gripSize * 0.19f;
         for(int i = 0; i < 3; i++){
-            float d = 5f + i * 4f;
-            Lines.line(width - d, 3f, width - 3f, d);
+            float d = gripSize * (0.31f + i * 0.25f);
+            Lines.line(width - d, m, width - m, d);
         }
         Draw.reset();
     }

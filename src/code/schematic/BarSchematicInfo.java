@@ -39,10 +39,10 @@ public class BarSchematicInfo extends Table{
 
         setWidth(width);
         top();
-        defaults().pad(1f);
+        defaults().pad(BarTheme.u(1f));
 
         // ---------------------------------------------------------------- 预览
-        add(new SchematicsDialog.SchematicImage(schem)).growX().height(PREVIEW_H).padBottom(4f).row();
+        add(new SchematicsDialog.SchematicImage(schem)).growX().height(BarTheme.u(PREVIEW_H)).padBottom(BarTheme.u(4f)).row();
 
         add(BarTheme.text(schem.name())).growX().left().ellipsis(true).row();
         add(BarTheme.dimText(schem.width + " × " + schem.height + "    方块 " + schem.tiles.size))
@@ -55,25 +55,25 @@ public class BarSchematicInfo extends Table{
         boolean hasPower = cons > 0.001f || prod > 0.001f;
 
         if(reqs.length > 0 || hasPower){
-            add(BarTheme.accentText("· 消耗")).growX().left().padTop(4f).row();
+            add(BarTheme.accentText("· 消耗")).growX().left().padTop(BarTheme.u(4f)).row();
         }else{
-            add(BarTheme.accentText("· 消耗")).growX().left().padTop(4f).row();
+            add(BarTheme.accentText("· 消耗")).growX().left().padTop(BarTheme.u(4f)).row();
             add(BarTheme.dimText("无")).growX().left().row();
         }
 
         if(reqs.length > 0){
             Table cost = new Table();
             cost.defaults().pad(0f);
-            float cellW = (width - 6f) / 4f;
+            float cellW = (width - BarTheme.u(6f)) / 4f;
             int i = 0;
             for(ItemStack st : reqs){
                 Table cell = new Table();
-                cell.add(new Image(st.item.uiIcon)).size(14f).padRight(3f);
+                cell.add(new Image(st.item.uiIcon)).size(BarTheme.u(14f)).padRight(BarTheme.u(3f));
                 Label amount = new Label(String.valueOf(st.amount), Styles.defaultLabel);
                 amount.setEllipsis(true);
                 // 数量列给固定宽度，五位数的数量也压得住，不会把整行顶宽
-                cell.add(amount).width(cellW - 19f).left();
-                cost.add(cell).width(cellW).padBottom(2f);
+                cell.add(amount).width(cellW - BarTheme.u(19f)).left();
+                cost.add(cell).width(cellW).padBottom(BarTheme.u(2f));
                 if(++i % 4 == 0) cost.row();
             }
             add(cost).growX().left().row();
@@ -83,15 +83,15 @@ public class BarSchematicInfo extends Table{
             Table power = new Table();
             power.defaults().pad(0f);
             if(prod > 0.001f){
-                power.image(Icon.powerSmall).color(Pal.powerLight).size(13f).padRight(3f);
+                power.image(Icon.powerSmall).color(Pal.powerLight).size(BarTheme.u(13f)).padRight(BarTheme.u(3f));
                 power.add(powerText("+" + Strings.autoFixed(prod, 2) + "/s", Pal.powerLight)).left();
             }
             if(cons > 0.001f){
-                if(prod > 0.001f) power.add().width(14f);
-                power.image(Icon.powerSmall).color(Pal.remove).size(13f).padRight(3f);
+                if(prod > 0.001f) power.add().width(BarTheme.u(14f));
+                power.image(Icon.powerSmall).color(Pal.remove).size(BarTheme.u(13f)).padRight(BarTheme.u(3f));
                 power.add(powerText("-" + Strings.autoFixed(cons, 2) + "/s", Pal.remove)).left();
             }
-            add(power).growX().left().padTop(1f).row();
+            add(power).growX().left().padTop(BarTheme.u(1f)).row();
         }
 
         // ---------------------------------------------------------------- 标签
@@ -101,14 +101,14 @@ public class BarSchematicInfo extends Table{
                 if(i > 0) sb.append(" · ");
                 sb.append(schem.labels.get(i));
             }
-            add(BarTheme.dimText(sb.toString())).growX().left().padTop(4f).ellipsis(true).row();
+            add(BarTheme.dimText(sb.toString())).growX().left().padTop(BarTheme.u(4f)).ellipsis(true).row();
         }
 
         // ---------------------------------------------------------------- 描述
         String desc = schem.description();
         if(desc != null && !desc.isEmpty()){
             if(maxDescChars > 0 && desc.length() > maxDescChars) desc = desc.substring(0, maxDescChars) + "…";
-            add(BarTheme.dimText(desc)).growX().left().padTop(4f).wrap().row();
+            add(BarTheme.dimText(desc)).growX().left().padTop(BarTheme.u(4f)).wrap().row();
         }
     }
 

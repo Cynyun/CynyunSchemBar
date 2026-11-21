@@ -16,7 +16,13 @@ import arc.scene.ui.layout.Table;
  */
 public class BarSettingsWindow extends BarWindow{
 
+    /** 逻辑单位（乘 Scl 后才是像素）；高度最终由内容 pref 决定。 */
     public static final float WIDTH = 400f, HEIGHT = 236f;
+    /** 行高（逻辑单位）。 */
+    private static final float HEAD_H = 20f, ROW_H = 18f, BTN_H = 24f, PAD = 2f;
+
+    /** 左侧名字列的宽度（逻辑单位）：四个字的“不透明度”要放得下。 */
+    private static final float NAME_W = 100f;
 
     private BarSlider opacitySlider;
     private Label opacityValue;
@@ -27,21 +33,22 @@ public class BarSettingsWindow extends BarWindow{
     private float resetTimer;
 
     public BarSettingsWindow(){
-        super(WIDTH, HEIGHT);
+        super(BarTheme.u(WIDTH), BarTheme.u(HEIGHT));
 
-        margin(8f);
-        defaults().pad(2f);
+        margin(BarTheme.u(8f));
+        defaults().pad(BarTheme.u(PAD));
         top();
 
         Table head = new Table();
         head.add(BarTheme.accentText("设 置")).growX().left();
-        head.add(new BarCloseButton().onClick(Start::closeSettings)).size(18f);
-        add(head).growX().height(20f).row();
+        head.add(new BarCloseButton().onClick(Start::closeSettings)).size(BarTheme.u(18f));
+        add(head).growX().height(BarTheme.u(HEAD_H)).row();
 
-        add(new BarDivider()).growX().height(1f).padTop(3f).padBottom(4f).row();
+        add(new BarDivider()).growX().height(1f)
+            .padTop(BarTheme.u(3f)).padBottom(BarTheme.u(4f)).row();
 
         // ---------------------------------------------------------------- 外观
-        add(BarTheme.accentText("· 外观")).growX().left().height(15f).row();
+        add(BarTheme.accentText("· 外观")).growX().left().height(BarTheme.u(15f)).row();
 
         colorRow("强调色", BarTheme.accent);
         colorRow("次要文字", BarTheme.dim);
@@ -50,7 +57,7 @@ public class BarSettingsWindow extends BarWindow{
         colorRow("面板底色", BarTheme.panel);
 
         Table op = new Table();
-        op.add(BarTheme.dimText("不透明度")).width(100f).left();
+        op.add(BarTheme.dimText("不透明度")).width(BarTheme.u(NAME_W)).left();
         opacitySlider = new BarSlider(30f, 100f, Mathf.round(BarTheme.panelOpacity * 100f));
         opacityValue = BarTheme.text(Mathf.round(BarTheme.panelOpacity * 100f) + "%");
         opacityValue.touchable = arc.scene.event.Touchable.disabled;
@@ -58,17 +65,21 @@ public class BarSettingsWindow extends BarWindow{
             BarTheme.panelOpacity = opacitySlider.value() / 100f;
             opacityValue.setText(Mathf.round(opacitySlider.value()) + "%");
         };
-        op.add(opacitySlider).growX().height(16f).padLeft(2f).padRight(6f);
-        op.add(opacityValue).width(34f).right();
-        add(op).growX().height(18f).row();
+        op.add(opacitySlider).growX().height(BarTheme.u(16f))
+            .padLeft(BarTheme.u(PAD)).padRight(BarTheme.u(6f));
+        op.add(opacityValue).width(BarTheme.u(34f)).right();
+        add(op).growX().height(BarTheme.u(ROW_H)).row();
 
         // ---------------------------------------------------------------- 底部按钮
         Table btns = new Table();
-        btns.defaults().growX().height(24f).pad(2f);
+        btns.defaults().growX().height(BarTheme.u(BTN_H)).pad(BarTheme.u(PAD));
         resetBtn = new BarButton("恢复默认").onClick(this::onReset);
         btns.add(resetBtn);
         btns.add(new BarButton("关闭").accent(true).onClick(Start::closeSettings));
-        add(btns).growX().padTop(4f).row();
+        add(btns).growX().padTop(BarTheme.u(4f)).row();
+
+        // 高度取表格自己的 pref：手写常量去猜会因为每行 pad 累加而差几像素，底部按钮被挤出去
+        setSize(BarTheme.u(WIDTH), getPrefHeight());
 
         sync();
     }
@@ -91,9 +102,9 @@ public class BarSettingsWindow extends BarWindow{
         field.openPicker = () -> Start.openPicker(field);
 
         Table row = new Table();
-        row.add(BarTheme.dimText(title)).width(100f).left();
-        row.add(field).growX().height(18f).padLeft(2f);
-        add(row).growX().height(18f).row();
+        row.add(BarTheme.dimText(title)).width(BarTheme.u(NAME_W)).left();
+        row.add(field).growX().height(BarTheme.u(ROW_H)).padLeft(BarTheme.u(PAD));
+        add(row).growX().height(BarTheme.u(ROW_H)).row();
     }
 
     @Override

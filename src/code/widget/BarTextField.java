@@ -63,9 +63,9 @@ public class BarTextField extends Table implements BarControl{
         field.setMessageText(message);
         field.setAlignment(Align.left);
 
-        // 文字左留白要避开侧标那 2px 竖线，底线样式则可以贴得紧一点
-        float left = style == Style.SIDE ? 10f : 8f;
-        add(field).growX().pad(3f, left, 3f, 6f);
+        // 文字左留白要避开侧标那道竖线，底线样式则可以贴得紧一点
+        float left = BarTheme.u(style == Style.SIDE ? 10f : 8f);
+        add(field).growX().pad(BarTheme.u(3f), left, BarTheme.u(3f), BarTheme.u(6f));
 
         touchable = Touchable.enabled;
         // 点在文字和线之间的留白上也应该聚焦，所以表格自己也要接一下按下事件
@@ -145,14 +145,15 @@ public class BarTextField extends Table implements BarControl{
             }else{
                 Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, alpha);
             }
-            // 上下各留 3px，免得和相邻行的线粘成一条
-            Fill.crect(x, y + 3f, 2f, Math.max(0f, height - 6f));
+            // 上下各留 3 逻辑像素，免得和相邻行的线粘成一条
+            float edge = BarTheme.u(3f);
+            Fill.crect(x, y + edge, BarTheme.u(2f), Math.max(0f, height - edge * 2f));
         }else{
             float alpha = focused ? 0.95f * a : (over ? 0.55f : 0.30f) * a;
             if(focused){
-                // 聚焦时加粗到 2px：线向上长，底部仍贴着原位置
+                // 聚焦时加粗到 2 逻辑像素：线向上长，底部仍贴着原位置
                 Draw.color(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, alpha);
-                Lines.stroke(2f);
+                Lines.stroke(BarTheme.u(2f));
                 Lines.line(x + 1f, y + 1f, x + width - 1f, y + 1f);
             }else{
                 BarTheme.hline(x + 1f, x + width - 1f, y, alpha);

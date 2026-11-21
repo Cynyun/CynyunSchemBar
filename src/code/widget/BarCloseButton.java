@@ -37,7 +37,7 @@ public class BarCloseButton extends Button{
         if(over) BarTheme.fill(x, y, width, height, (pressed ? 0.28f : 0.16f) * a);
         super.draw();
 
-        float m = 5f;
+        float m = BarTheme.u(5f);
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, (over ? 0.95f : 0.65f) * a);
         Lines.stroke(1.2f);
         Lines.line(x + m, y + m, x + width - m, y + height - m);

@@ -21,12 +21,17 @@ import mindustry.ui.Styles;
  */
 public class BarScroll extends ScrollPane{
 
-    /** 滑块粗细。 */
+    /** 滑块粗细（逻辑像素）。 */
     public static final float THUMB = 2f;
-    /** 轨道中心离右边框的距离。 */
+    /** 轨道中心离右边框的距离（逻辑像素）。 */
     public static final float INSET = 3f;
-    /** 内容区必须为滚动条预留的宽度：滑块 2 + 轨道 1 + 两侧各约 1.5 的呼吸空间。 */
+    /** 内容区必须为滚动条预留的宽度（逻辑像素）：滑块 2 + 轨道 1 + 两侧各约 1.5 的呼吸空间。 */
     public static final float BAR_WIDTH = 6f;
+
+    /** 上面那些是逻辑像素，真正排版要用这个换算过的值。 */
+    public static float barWidth(){
+        return BarTheme.u(BAR_WIDTH);
+    }
 
     /** 是否横向滚动（标签行这种一排 chips 的用）。 */
     private final boolean horizontal;
@@ -62,8 +67,8 @@ public class BarScroll extends ScrollPane{
     /** 内容 + 滚动条预留空间的包装层。 */
     private static Element reserve(Element content, boolean horizontal){
         Table table = new Table();
-        if(horizontal) table.add(content).grow().padBottom(BAR_WIDTH);
-        else table.add(content).grow().padRight(BAR_WIDTH);
+        if(horizontal) table.add(content).grow().padBottom(barWidth());
+        else table.add(content).grow().padRight(barWidth());
         return table;
     }
 
@@ -76,12 +81,12 @@ public class BarScroll extends ScrollPane{
      */
     @Override
     public float getMinHeight(){
-        return 32f;
+        return BarTheme.u(16f);
     }
 
     @Override
     public float getMinWidth(){
-        return 32f;
+        return BarTheme.u(16f);
     }
 
     @Override
@@ -94,14 +99,15 @@ public class BarScroll extends ScrollPane{
         }
 
         // 内容没有溢出就不画滚动条，避免面板右边多出一条没意义的竖线
-        if(getMaxY() <= 1f || width <= 8f || height <= 12f) return;
+        float inset = BarTheme.u(INSET), pad = BarTheme.u(4f);
+        if(getMaxY() <= 1f || width <= inset * 3f || height <= pad * 3f) return;
 
         float a = parentAlpha;
-        float trackX = x + width - INSET;
-        float bottom = y + 4f;
-        float top = y + height - 4f;
+        float trackX = x + width - inset;
+        float bottom = y + pad;
+        float top = y + height - pad;
         float trackH = top - bottom;
-        if(trackH <= 8f) return;
+        if(trackH <= BarTheme.u(8f)) return;
 
         // 轨道
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, 0.12f * a);
@@ -111,12 +117,12 @@ public class BarScroll extends ScrollPane{
         // 滑块：高度按“可视高度 / 内容总高”缩放，最短 8px 保证能看见
         float content = height + getMaxY();
         float frac = content <= height ? 1f : Mathf.clamp(height / content, 0.08f, 1f);
-        float thumbH = Math.max(8f, trackH * frac);
+        float thumbH = Math.max(BarTheme.u(8f), trackH * frac);
         // 滚动百分比 0 = 顶部，屏幕坐标 y 向上，所以要 (1 - p)
         float thumbY = bottom + (trackH - thumbH) * (1f - getVisualScrollPercentY());
 
         Draw.color(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, 0.8f * a);
-        Lines.stroke(THUMB);
+        Lines.stroke(BarTheme.u(THUMB));
         Lines.line(trackX, thumbY, trackX, thumbY + thumbH);
 
         Draw.reset();
@@ -124,13 +130,14 @@ public class BarScroll extends ScrollPane{
 
     /** 横向滚动条：一条贴底的横线 + 强调色滑块。 */
     private void drawHorizontal(){
-        if(getMaxX() <= 1f || height <= 8f) return;
+        float inset = BarTheme.u(INSET), pad = BarTheme.u(4f);
+        if(getMaxX() <= 1f || height <= inset * 3f) return;
 
         float a = parentAlpha;
-        float trackY = y + INSET;
-        float left = x + 4f, right = x + width - 4f;
+        float trackY = y + inset;
+        float left = x + pad, right = x + width - pad;
         float trackW = right - left;
-        if(trackW <= 8f) return;
+        if(trackW <= BarTheme.u(8f)) return;
 
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, 0.12f * a);
         Lines.stroke(1f);
@@ -138,11 +145,11 @@ public class BarScroll extends ScrollPane{
 
         float content = width + getMaxX();
         float frac = content <= width ? 1f : Mathf.clamp(width / content, 0.08f, 1f);
-        float thumbW = Math.max(8f, trackW * frac);
+        float thumbW = Math.max(BarTheme.u(8f), trackW * frac);
         float thumbX = left + (trackW - thumbW) * getVisualScrollPercentX();
 
         Draw.color(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, 0.8f * a);
-        Lines.stroke(THUMB);
+        Lines.stroke(BarTheme.u(THUMB));
         Lines.line(thumbX, trackY, thumbX + thumbW, trackY);
 
         Draw.reset();

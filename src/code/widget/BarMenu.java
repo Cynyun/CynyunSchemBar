@@ -21,9 +21,11 @@ import mindustry.Vars;
  */
 public class BarMenu extends Table{
 
+    /** 逻辑单位（乘 Scl 后才是像素）。 */
     private static final float ITEM_H = 22f;
     /** 最小宽度：两个字一列太窄，菜单看着会像一条缝。 */
     private static final float MIN_W = 104f;
+    private static final float PAD = 1f, MARGIN = 6f;
 
     private final Table list = new Table();
 
@@ -52,14 +54,15 @@ public class BarMenu extends Table{
         touchable = Touchable.enabled;
         setTransform(false);
 
-        margin(6f);
+        margin(BarTheme.u(MARGIN));
         top();
 
         if(title != null && !title.isEmpty()){
-            add(BarTheme.dimText(title)).left().pad(1f, 4f, 4f, 4f).row();
+            add(BarTheme.dimText(title)).left()
+                .pad(BarTheme.u(PAD), BarTheme.u(4f), BarTheme.u(4f), BarTheme.u(4f)).row();
         }
 
-        list.defaults().pad(1f);
+        list.defaults().pad(BarTheme.u(PAD));
         add(list).growX();
     }
 
@@ -68,7 +71,7 @@ public class BarMenu extends Table{
         list.add(new BarButton(label).borderless(true).ellipsis(true).onClick(() -> {
             close();
             action.run();
-        })).growX().height(ITEM_H).row();
+        })).growX().height(BarTheme.u(ITEM_H)).row();
         return this;
     }
 
@@ -76,7 +79,7 @@ public class BarMenu extends Table{
     public void showAt(float x, float y){
         if(Core.scene == null || Vars.ui == null || Vars.ui.hudGroup == null) return;
 
-        setSize(Math.max(MIN_W, Mathf.round(getPrefWidth())), Mathf.round(getPrefHeight()));
+        setSize(Math.max(BarTheme.u(MIN_W), Mathf.round(getPrefWidth())), Mathf.round(getPrefHeight()));
 
         float maxX = Math.max(0f, Core.graphics.getWidth() - width);
         float maxY = Math.max(0f, Core.graphics.getHeight() - height);

@@ -53,8 +53,8 @@ public class BarButton extends Button{
 
         label = new Label(text, new Label.LabelStyle(Styles.defaultLabel));
         label.setAlignment(Align.center);
-        // 左右留出 8px，否则文字会顶到四角括号的竖臂上（无边框时会收紧，见 borderless()）
-        labelCell = add(label).grow().pad(2f, 8f, 2f, 8f);
+        // 左右留出 8 逻辑像素，否则文字会顶到四角括号的竖臂上（无边框时会收紧，见 borderless()）
+        labelCell = add(label).grow().pad(BarTheme.u(2f), BarTheme.u(8f), BarTheme.u(2f), BarTheme.u(8f));
 
         touchable = Touchable.enabled;
         setSize(getPrefWidth(), getPrefHeight());
@@ -79,8 +79,8 @@ public class BarButton extends Button{
     /** 无边框样式：只靠悬停/按下/选中的底色提示，不画四角括号。 */
     public BarButton borderless(boolean borderless){
         this.borderless = borderless;
-        // 没有括号要躲，内边距收回 5px，否则窄按钮里文字会被挤歪
-        labelCell.pad(1f, 5f, 1f, 5f);
+        // 没有括号要躲，内边距收回 5 逻辑像素，否则窄按钮里文字会被挤歪
+        labelCell.pad(BarTheme.u(1f), BarTheme.u(5f), BarTheme.u(1f), BarTheme.u(5f));
         // 改了 cell 的 pad 就要重算尺寸，否则未显式 size() 的按钮会留着旧的最小宽度
         invalidateHierarchy();
         setSize(getPrefWidth(), getPrefHeight());

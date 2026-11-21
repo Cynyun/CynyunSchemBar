@@ -22,7 +22,12 @@ import mindustry.game.Schematic;
  */
 public class BarSchematicInfoWindow extends BarWindow{
 
+    /** 逻辑单位（乘 Scl 后才是像素）；HEIGHT 只是初值，最终高度由内容 pref 决定。 */
     public static final float WIDTH = 380f, HEIGHT = 400f;
+    /** 缩放下限（逻辑单位）：正文在滚动区里，可以压得比内容矮。 */
+    private static final float MIN_W = 280f, MIN_H = 180f;
+    /** 标题行高、按钮行高、别名行高（逻辑单位）。 */
+    private static final float HEAD_H = 20f, BTN_H = 24f, ALIAS_H = 26f, PAD = 2f, GAP = 8f;
 
     private final BarSlot slot;
     private final Schematic schem;
@@ -56,51 +61,60 @@ public class BarSchematicInfoWindow extends BarWindow{
     };
 
     public BarSchematicInfoWindow(BarSlot slot){
-        super(WIDTH, HEIGHT);
+        // super 必须在第一句，所以尺寸在这里一次性算好：宽度固定，高度先给个估值，构造完再按 pref 收紧
+        super(BarTheme.u(WIDTH), BarTheme.u(HEIGHT));
         this.slot = slot;
         this.schem = slot.bound();
 
-        margin(8f);
-        defaults().pad(2f);
+        margin(BarTheme.u(GAP));
+        defaults().pad(BarTheme.u(PAD));
         top();
 
         // ---------------------------------------------------------------- 标题
         Table head = new Table();
         head.add(BarTheme.accentText("蓝 图 信 息")).growX().left();
-        head.add(new BarCloseButton().onClick(this::close)).size(18f);
-        add(head).growX().height(20f).row();
+        head.add(new BarCloseButton().onClick(this::close)).size(BarTheme.u(18f));
+        add(head).growX().height(BarTheme.u(HEAD_H)).row();
 
-        add(new BarDivider()).growX().height(1f).padTop(2f).padBottom(3f).row();
+        add(new BarDivider()).growX().height(1f)
+            .padTop(BarTheme.u(PAD)).padBottom(BarTheme.u(PAD + 1f)).row();
 
         // ---------------------------------------------------------------- 内容
         // 正文直接用悬停浮层那一份实现（BarSchematicInfo）：预览、消耗、电量（含 ×60）、
         // 标签、描述都与浮层逐像素一致，不再各写一套。描述传 0 = 不截断，交给下面的滚动区
-        BarSchematicInfo body = new BarSchematicInfo(schem, WIDTH - 16f - BarScroll.BAR_WIDTH, 0);
+        // 正文宽度 = 窗口内宽（减去 margin）再让出滚动条；这个值只用于算消耗格的列宽
+        float inner = BarTheme.u(WIDTH) - BarTheme.u(GAP) * 2f - BarScroll.barWidth();
+        BarSchematicInfo body = new BarSchematicInfo(schem, inner, 0);
         // 预览图是固定高的，消耗/描述行数不定：滚动区高度按内容定，窗口再跟着收缩
-        float bodyH = Mathf.clamp(body.getPrefHeight() + 4f, 120f, 320f);
+        float bodyH = Mathf.clamp(body.getPrefHeight() + BarTheme.u(4f),
+            BarTheme.u(120f), Math.min(BarTheme.u(320f), Core.graphics.getHeight() * 0.6f));
         add(new BarScroll(body)).growX().height(bodyH).row();
 
         // ---------------------------------------------------------------- 别名
         shownAlias = slot.alias() == null ? "" : slot.alias();
 
         Table arow = new Table();
-        arow.add(BarTheme.dimText("别名")).width(44f).left();
+        arow.add(BarTheme.dimText("别名")).width(BarTheme.u(44f)).left();
         alias = new BarTextField(shownAlias, "留空则用蓝图原名", BarTextField.MAX_LENGTH);
-        arow.add(alias).growX().height(24f);
-        add(arow).growX().height(26f).padTop(2f).row();
+        arow.add(alias).growX().height(BarTheme.u(BTN_H));
+        add(arow).growX().height(BarTheme.u(ALIAS_H)).padTop(BarTheme.u(PAD)).row();
 
         // ---------------------------------------------------------------- 按钮
         Table btns = new Table();
-        btns.defaults().growX().height(24f).pad(2f);
+        btns.defaults().growX().height(BarTheme.u(BTN_H)).pad(BarTheme.u(PAD));
         btns.add(new BarButton("取消绑定").onClick(() -> {
             slot.unbind();
             close();
         }));
         btns.add(new BarButton("关闭").accent(true).onClick(this::close));
-        add(btns).growX().padTop(2f).row();
+        add(btns).growX().padTop(BarTheme.u(PAD)).row();
 
         // 高度直接取表格自己的 pref：上面各行的 pad 都是手写的，别用常量去猜
-        setSize(WIDTH, getPrefHeight());
+        float w = BarTheme.u(WIDTH);
+        setSize(w, Math.min(getPrefHeight(), Core.graphics.getHeight()));
+
+        // 也给个右下角手柄：正文在滚动区里，压矮一点不至于坏掉
+        enableResize(Math.min(BarTheme.u(MIN_W), w), Math.min(BarTheme.u(MIN_H), getHeight()));
 
         // 构造完就挂监听：窗口还没进 hudGroup，这之前不可能有事件
         if(Core.scene != null) Core.scene.addCaptureListener(outside);
@@ -116,11 +130,12 @@ public class BarSchematicInfoWindow extends BarWindow{
     protected void defaultSpawn(){
         float maxX = Math.max(0f, Core.graphics.getWidth() - width);
         float maxY = Math.max(0f, Core.graphics.getHeight() - height);
+        float gap = BarTheme.u(GAP);
 
         // 槽位是面板里的子元素，x/y 是面板内坐标：换算到 stage 才能和本窗口的屏幕坐标对齐
         Vec2 p = slot.localToStageCoordinates(new Vec2(0f, 0f));
-        float gx = p.x + slot.getWidth() + 8f;
-        if(gx > maxX) gx = Math.max(0f, p.x - width - 8f);
+        float gx = p.x + slot.getWidth() + gap;
+        if(gx > maxX) gx = Math.max(0f, p.x - width - gap);
         float gy = p.y + slot.getHeight() - height;
 
         setPosition(Mathf.round(Mathf.clamp(gx, 0f, maxX)), Mathf.round(Mathf.clamp(gy, 0f, maxY)));

@@ -1,6 +1,8 @@
 package code;
 
+import arc.Core;
 import arc.Events;
+import arc.util.Log;
 import mindustry.Vars;
 import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.game.EventType.ResizeEvent;
@@ -30,6 +32,11 @@ public class Start{
             Vars.ui.hudGroup.addChild(panel);
             panel.applyLayout();
             panel.toFront();
+
+            // 手机端排查用：单位是屏幕像素，u(1)=Scl.scl(1) 就是“一个逻辑像素有多大”
+            Log.info("[schembar] scl=@ screen=@x@ panel=@x@",
+                BarTheme.u(1f), Core.graphics.getWidth(), Core.graphics.getHeight(),
+                panel.getWidth(), panel.getHeight());
 
             // 窗口尺寸变化：贴边的继续贴边，自由态的按比例跟随。用 Core.graphics 而不是
             // hudGroup 的宽高——后者要等下一次布局才更新，事件里读到的还是旧尺寸。

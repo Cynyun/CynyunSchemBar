@@ -74,15 +74,17 @@ public class BarSlider extends Element implements BarControl{
     }
 
     private void setFromX(float localX){
-        float span = Math.max(1f, width - PAD * 2f);
-        float t = Mathf.clamp((localX - PAD) / span, 0f, 1f);
+        float pad = BarTheme.u(PAD);
+        float span = Math.max(1f, width - pad * 2f);
+        float t = Mathf.clamp((localX - pad) / span, 0f, 1f);
         setValue(min + t * (max - min));
     }
 
     @Override
     public void draw(){
         float a = parentAlpha;
-        float x1 = x + PAD, x2 = x + width - PAD;
+        float pad = BarTheme.u(PAD);
+        float x1 = x + pad, x2 = x + width - pad;
         if(x2 - x1 <= 2f) return;
 
         float mid = y + height / 2f;
@@ -100,7 +102,7 @@ public class BarSlider extends Element implements BarControl{
         Lines.line(x1, mid + 0.5f, kx, mid + 0.5f);
 
         // 滑块：实心小方块，落整数像素
-        float kw = 5f, kh = Math.min(14f, height - 2f);
+        float kw = BarTheme.u(5f), kh = Math.min(BarTheme.u(14f), height - 2f);
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, 0.85f * a);
         Fill.crect(Mathf.round(kx - kw / 2f), y + (height - kh) / 2f, kw, kh);
 

@@ -5,6 +5,7 @@ import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.graphics.g2d.Lines;
 import arc.scene.ui.Label;
+import arc.scene.ui.layout.Scl;
 import mindustry.ui.Styles;
 
 /**
@@ -36,6 +37,17 @@ public final class BarTheme{
     public static float panelOpacity = 0.40f;
 
     private BarTheme(){
+    }
+
+    /**
+     * 逻辑像素 → 屏幕像素。
+     *
+     * 游戏的字体在加载时就被 Scl 放大过（Fonts.java 用 Scl.scl(size)），而布局坐标是物理像素，
+     * 所以 mod 里所有尺寸都必须过这一道，否则手机上「字 32px、行高 20px」，文字互相压、按钮挤出窗口。
+     * 不要把它写成 static final：用户中途改「UI 缩放」时 Scl 会变，静态常量会冻在旧值上。
+     */
+    public static float u(float v){
+        return Scl.scl(v);
     }
 
     /** 恢复出厂颜色，由 BarConfig.defaults() 调用。 */
@@ -85,7 +97,8 @@ public final class BarTheme{
 
     /** 只画四角括号（常态按钮的样式：几乎不遮挡，但边界可辨）。 */
     public static void brackets(float x, float y, float w, float h, float alpha){
-        brackets(x, y, w, h, BRACKET, alpha);
+        // 臂长是逻辑长度：手机上字被 Scl 放大，7px 的括号相对文字会小得像缺口
+        brackets(x, y, w, h, u(BRACKET), alpha);
     }
 
     public static void brackets(float x, float y, float w, float h, float len, float alpha){
@@ -117,7 +130,7 @@ public final class BarTheme{
     /** 强调色的四角括号。 */
     public static void bracketsAccent(float x, float y, float w, float h, float alpha){
         float ix = x + 0.5f, iy = y + 0.5f, iw = w - 1f, ih = h - 1f;
-        float arm = Math.min(BRACKET, Math.min(iw * 0.3f, ih * 0.45f));
+        float arm = Math.min(u(BRACKET), Math.min(iw * 0.3f, ih * 0.45f));
         if(iw <= 2f || ih <= 2f){
             frameAccent(x, y, w, h, alpha);
             return;

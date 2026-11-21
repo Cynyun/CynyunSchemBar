@@ -30,10 +30,11 @@ public class BarSchematicInfoPopup extends Table{
         this.schem = schem;
 
         touchable = Touchable.enabled;
-        margin(MARGIN);
+        float w = BarTheme.u(WIDTH), margin = BarTheme.u(MARGIN);
+        margin(margin);
         top();
 
-        add(new BarSchematicInfo(schem, WIDTH - MARGIN * 2f, BarSchematicInfo.POPUP_DESC_CHARS)).growX();
+        add(new BarSchematicInfo(schem, w - margin * 2f, BarSchematicInfo.POPUP_DESC_CHARS)).growX();
 
         addListener(new InputListener(){
             @Override
@@ -47,7 +48,7 @@ public class BarSchematicInfoPopup extends Table{
             }
         });
 
-        setSize(WIDTH, getPrefHeight());
+        setSize(w, getPrefHeight());
     }
 
     public Schematic schematic(){

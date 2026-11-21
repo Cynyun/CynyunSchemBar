@@ -48,13 +48,14 @@ public class BarMenuButton extends Button{
 
         Draw.color(BarTheme.text.r, BarTheme.text.g, BarTheme.text.b,
             (isDisabled() ? 0.25f : isOver() ? 1f : 0.7f) * a);
-        Lines.stroke(THICK);
+        float thick = BarTheme.u(THICK), gap = BarTheme.u(GAP), len = BarTheme.u(LINE);
+        Lines.stroke(thick);
 
         float cx = x + width / 2f;
         float cy = y + height / 2f;
         for(int i = -1; i <= 1; i++){
-            float ly = Mathf.round(cy + i * GAP);
-            Lines.line(cx - LINE / 2f, ly, cx + LINE / 2f, ly);
+            float ly = Mathf.round(cy + i * gap);
+            Lines.line(cx - len / 2f, ly, cx + len / 2f, ly);
         }
 
         Draw.reset();

@@ -31,15 +31,25 @@ import mindustry.ui.dialogs.SchematicsDialog;
  */
 public class BarSchematicCard extends Table{
 
+    /** 卡片尺寸（逻辑像素，真正落地要过 {@link #w()}/{@link #h()}）。 */
     public static final float W = 176f, H = 218f;
 
-    /** 卡片内边距。 */
+    /** 卡片内边距（逻辑）。 */
     private static final float PAD = 6f;
     /** 内容区宽度：卡片宽减左右内边距。所有子格都按它定宽。 */
     private static final float IW = W - PAD * 2f;
-    /** 预览图高度：218 - 2*6(边距) - 2(名字上方留白) - 18 - 14 - 13 = 159。 */
+    /** 预览图高度（逻辑）：218 - 2*6(边距) - 2(名字上方留白) - 18 - 14 - 13 = 159，再留一点余量。 */
     private static final float PREVIEW_H = 149f;
     private static final float NAME_H = 18f, META_H = 14f, TAGS_H = 13f;
+
+    /** 屏幕像素尺寸：网格排版和卡片自身必须用同一个值，所以集中在这里换算。 */
+    public static float w(){
+        return BarTheme.u(W);
+    }
+
+    public static float h(){
+        return BarTheme.u(H);
+    }
 
     private final Schematic schem;
     private final Label name;
@@ -64,25 +74,27 @@ public class BarSchematicCard extends Table{
 
         setTransform(false);
         touchable = Touchable.enabled;
-        margin(PAD);
+        float pad = BarTheme.u(PAD), iw = BarTheme.u(IW);
+        margin(pad);
         defaults().pad(0f);
         top();
+        setSize(w(), h());
 
         // ---------------------------------------------------------------- 预览
         SchematicsDialog.SchematicImage preview = new SchematicsDialog.SchematicImage(schem);
-        add(preview).width(IW).height(PREVIEW_H).row();
+        add(preview).width(iw).height(BarTheme.u(PREVIEW_H)).row();
 
         // ---------------------------------------------------------------- 文字
         name = new Label(schem.name(), new Label.LabelStyle(Styles.defaultLabel));
         name.setAlignment(Align.center);
         name.setEllipsis(true);
-        add(name).width(IW).height(NAME_H).padTop(2f).row();
+        add(name).width(iw).height(BarTheme.u(NAME_H)).padTop(BarTheme.u(2f)).row();
 
         add(BarTheme.dimText(schem.width + " × " + schem.height + " · " + schem.tiles.size).alpha(0.75f))
-            .width(IW).height(META_H).row();
+            .width(iw).height(BarTheme.u(META_H)).row();
 
         add(BarTheme.dimText(tagsLine(schem)).alpha(0.6f))
-            .width(IW).height(TAGS_H).ellipsis(true).row();
+            .width(iw).height(BarTheme.u(TAGS_H)).ellipsis(true).row();
 
         click = new ClickListener(){
             @Override

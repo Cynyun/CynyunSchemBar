@@ -24,23 +24,36 @@ import mindustry.game.Schematic;
  */
 public class BarPanel extends BarWindow implements BarPickerHost{
 
-    /** 面板尺寸：四列 92px 的序列 + 滚动条刚好放得下，再多就横向滚动。 */
-    public static final float WIDTH = 480f, HEIGHT = 340f, MARGIN = 24f, TOP_OFFSET = 24f;
+    // 以下全是"逻辑像素"，用到时一律过 BarTheme.u()（= Scl.scl）换算成屏幕像素。
+    // 游戏的字体已经被 Scl 放大过，布局不跟着放大就会出现"字比格子大、按钮挤出窗口"。
 
-    private static final float COL_W = 92f, COL_GAP = 6f;
-    private static final float ENTRY_H = 22f;
-    private static final float TAB_W = 88f, TAB_H = 24f;
+    /** 默认宽度 = 3 列序列；用户拖过右下角之后用 BarConfig.mainWidth。 */
+    private static final float COL_W = 72f, COL_GAP = 6f;
+    /** 蓝图按钮高度：原来 24 太扁，降到手机上文字几乎贴着框。 */
+    private static final float ENTRY_H = 28f;
+    /** 栏目按钮高度（原来 24 太扁，手机上文字上下都快贴边了）。 */
+    private static final float TAB_H = 30f;
+    /** 列头高度。 */
+    private static final float HEAD_H = 26f;
+    /** 默认宽：3 列 + 列间距 + 滚动条 + 左右内容边距。 */
+    private static final float DEFAULT_W = COL_W * 3f + COL_GAP * 2f + BarScroll.BAR_WIDTH + 16f;
+    private static final float DEFAULT_H = 300f;
+    /** 内容表的内边距；最小值要把它算进去。 */
+    private static final float PAD = 8f;
+
+    /** 初始落点：左上角留一点、顶部躲开 HUD。 */
+    private static final float MARGIN = 12f, TOP_OFFSET = 48f;
 
     /** 面板名字：展开态在标题行，收起态是窄条上唯一的文字。 */
-    private static final String TITLE = "C Y N Y U N   ·   S C H E M B A R";
+    private static final String TITLE = "S C H E M B A R";
     /** 收起态显示的名字：标题那串字距拉得宽，窄条上换成紧凑写法。 */
-    private static final String SHORT_NAME = "Cynyun SchemBar";
+    private static final String SHORT_NAME = "SchemBar";
 
     /** 展开态内容与收起态窄条，同一时刻只挂一个到面板上。 */
     private final Table content, collapsed;
 
     /** 栏目 chips、序列列、序列区容器（空状态时换成一个居中的提示表）。 */
-    private final Table tabs = new Table(), columns = new Table(), body = new Table();
+    private final Table tabs = new Table(), columns = new Table(), body = new Table(), tabRow = new Table();
     private final BarScroll tabScroll, columnScroll;
     private final BarButton editBtn;
 
@@ -61,7 +74,7 @@ public class BarPanel extends BarWindow implements BarPickerHost{
     private float prevX, prevY, prevW, prevH;
 
     public BarPanel(){
-        super(WIDTH, HEIGHT);
+        super(initialWidth(), initialHeight());
 
         // 面板本身不留边距，边距交给展开态的内容表，否则收起条也会被撑出空白
         margin(0f);
@@ -69,44 +82,55 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
         // ------------------------------------------------------------ 展开态
         content = new Table();
-        content.margin(8f);
-        content.defaults().pad(2f);
+        content.margin(BarTheme.u(PAD));
+        content.defaults().pad(BarTheme.u(2f));
         content.top();
 
-        // 标题行：编辑开关 + 设置 + 收起，后两个是一次性入口
+        // 标题行：编辑开关 + 设置 + 收起，后两个是一次性入口。
+        // 标题给 ellipsis：窗口被拖到最小时文字自己截断，而不是把按钮挤出去。
         Table head = new Table();
-        head.add(BarTheme.accentText(TITLE)).growX().left();
+        BarTheme.BarLabel title = BarTheme.accentText(TITLE);
+        title.setEllipsis(true);
+        head.add(title).growX().left().minWidth(0f);
+        float btnH = BarTheme.u(HEAD_H) - BarTheme.u(4f);
         editBtn = new BarButton("编辑").borderless(true).stateful(true).onClick(this::toggleEditing);
-        head.add(editBtn).size(40f, 18f);
-        head.add(new BarButton("⚙").borderless(true).onClick(Start::openSettings)).size(22f, 18f);
-        head.add(new BarButton("−").borderless(true).onClick(() -> setCollapsed(true))).size(22f, 18f);
-        content.add(head).growX().height(20f).row();
+        head.add(editBtn).size(BarTheme.u(46f), btnH);
+        head.add(new BarButton("⚙").borderless(true).onClick(Start::openSettings)).size(BarTheme.u(24f), btnH);
+        head.add(new BarButton("−").borderless(true).onClick(() -> setCollapsed(true))).size(BarTheme.u(24f), btnH);
+        content.add(head).growX().height(BarTheme.u(HEAD_H)).row();
 
-        content.add(new BarDivider()).growX().height(1f).padTop(2f).padBottom(4f).row();
+        content.add(new BarDivider()).growX().height(1f).padTop(BarTheme.u(2f)).padBottom(BarTheme.u(4f)).row();
 
-        // 栏目行：一排单选按钮，放不下就横向滚
+        // 栏目行：一排单选按钮横向滚 + 右端固定的“新建栏目”（编辑态才出现，不随滚动跑掉）
         tabs.left();
-        tabs.defaults().padRight(4f);
+        tabs.defaults().padRight(BarTheme.u(4f));
         tabScroll = new BarScroll(tabs, true);
-        content.add(tabScroll).growX().height(32f).row();
+        content.add(tabRow).growX().height(BarTheme.u(TAB_H + 8f)).row();
 
-        content.add(new BarDivider()).growX().height(1f).padTop(4f).padBottom(4f).row();
+        content.add(new BarDivider()).growX().height(1f).padTop(BarTheme.u(4f)).padBottom(BarTheme.u(4f)).row();
 
         // 序列区：横向滚动，一列一个序列，列内自己竖直滚动
         columns.left().top();
-        columns.defaults().padRight(COL_GAP);
+        columns.defaults().padRight(BarTheme.u(COL_GAP));
         columnScroll = new BarScroll(columns, true);
         content.add(body).grow().row();
 
         // ------------------------------------------------------------ 收起态
         collapsed = new Table();
-        collapsed.margin(4f, 10f, 4f, 10f);
+        collapsed.margin(BarTheme.u(4f), BarTheme.u(10f), BarTheme.u(4f), BarTheme.u(10f));
         collapsed.add(BarTheme.accentText(SHORT_NAME)).left();
-        collapsed.add(new BarButton("+").borderless(true).onClick(() -> setCollapsed(false))).size(22f, 18f);
+        collapsed.add(new BarButton("+").borderless(true).onClick(() -> setCollapsed(false))).size(BarTheme.u(24f), btnH);
 
         add(content).grow();
 
         rebuild();
+
+        // 最小值 = 标题行真实宽度（TITLE + 三个按钮），高度取它的一半
+        float minW = head.getPrefWidth() + BarTheme.u(PAD * 2f + 4f);
+        float minH = Math.max(BarTheme.u(60f), minW * 0.5f);
+        enableResize(minW, minH);
+        setSize(Math.max(width, minW), Math.max(height, minH));
+
         applyLayout();
     }
 
@@ -117,8 +141,52 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
     @Override
     protected void defaultSpawn(){
-        // 屏幕左上角，y 轴向上，顶部留出 HUD 状态栏高度
-        setPosition(MARGIN, Mathf.round(Math.max(0f, Core.graphics.getHeight() - height - TOP_OFFSET)));
+        // 屏幕左上角，y 轴向上，顶部留出 HUD 状态栏高度（都要乘 Scl，否则手机上会被 HUD 盖住）
+        setPosition(Mathf.round(BarTheme.u(MARGIN)),
+            Mathf.round(Math.max(0f, Core.graphics.getHeight() - height - BarTheme.u(TOP_OFFSET))));
+    }
+
+    // ------------------------------------------------------------------ 尺寸
+
+    private static float initialWidth(){
+        float logical = BarConfig.mainWidth > 0f ? BarConfig.mainWidth : DEFAULT_W;
+        float w = BarTheme.u(logical);
+        float max = Math.max(BarTheme.u(120f), Core.graphics.getWidth() - BarTheme.u(16f));
+        return Math.min(w, max);
+    }
+
+    private static float initialHeight(){
+        float logical = BarConfig.mainHeight > 0f ? BarConfig.mainHeight : DEFAULT_H;
+        float h = BarTheme.u(logical);
+        // 手机上留出七成屏幕就够：面板太高会把准星和建造区挡住
+        float max = Math.max(BarTheme.u(80f), Core.graphics.getHeight() * 0.72f);
+        return Math.min(h, max);
+    }
+
+    /** 屏幕变小（窗口化、切分辨率）时把面板收进可见区：位置交给基类，尺寸这里先夹一次。 */
+    @Override
+    public void applyLayout(){
+        float maxW = Math.max(BarTheme.u(80f), Core.graphics.getWidth() - BarTheme.u(8f));
+        float maxH = Math.max(BarTheme.u(60f), Core.graphics.getHeight() - BarTheme.u(8f));
+        if(width > maxW || height > maxH){
+            float oldH = height;
+            setSize(Math.min(width, maxW), Math.min(height, maxH));
+            y = Math.max(0f, y + oldH - height);
+        }
+        super.applyLayout();
+    }
+
+    @Override
+    protected void onResize(float w, float h){
+        // 列宽固定，变宽只是多露出几列，不需要重建；位置/尺寸在松手时统一落盘
+        invalidate();
+    }
+
+    @Override
+    protected void onResizeEnd(){
+        BarConfig.mainWidth = width / BarTheme.u(1f);
+        BarConfig.mainHeight = height / BarTheme.u(1f);
+        BarConfig.save();
     }
 
     // ------------------------------------------------------------------ 重建
@@ -140,9 +208,11 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
     private void rebuildTabs(){
         tabs.clearChildren();
+        tabRow.clearChildren();
 
         for(BarCategory cat : BarConfig.categories){
-            BarButton btn = new BarButton(cat.name).ellipsis(true);
+            // 统一用无边框样式：栏目名是一组“页签”，加线框看着像一排按钮
+            BarButton btn = new BarButton(cat.name).ellipsis(true).borderless(true);
 
             if(editing){
                 // 编辑态点栏目是“开菜单”，不该把按钮的选中态翻掉（菜单关掉后没人会把它翻回来）
@@ -153,12 +223,16 @@ public class BarPanel extends BarWindow implements BarPickerHost{
                 btn.setChecked(cat == activeCategory());
                 btn.onClick(() -> selectCategory(cat));
             }
-            tabs.add(btn).size(TAB_W, TAB_H);
+            // 宽度跟着文字走：短名字不再被固定宽撑出一大块空白
+            tabs.add(btn).height(BarTheme.u(TAB_H)).minWidth(BarTheme.u(40f)).maxWidth(BarTheme.u(150f));
         }
+
+        tabRow.add(tabScroll).growX().height(BarTheme.u(TAB_H + 4f));
 
         // “+” 只在编辑态出现：普通态多一个看不懂的加号只会误触
         if(editing){
-            tabs.add(new BarButton("+").borderless(true).onClick(this::addCategory)).size(32f, TAB_H);
+            tabRow.add(new BarButton("+").borderless(true).onClick(this::addCategory))
+                .size(BarTheme.u(32f), BarTheme.u(TAB_H)).padLeft(BarTheme.u(4f));
         }
     }
 
@@ -178,62 +252,67 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
         columns.clearChildren();
         for(BarSequence seq : cat.sequences){
-            columns.add(buildColumn(seq)).width(COL_W).growY();
-        }
-        if(editing){
-            columns.add(buildAddColumn(cat)).width(COL_W).growY();
+            columns.add(buildColumn(seq)).width(BarTheme.u(COL_W)).growY();
         }
 
-        body.add(columnScroll).grow();
+        Table row = new Table();
+        row.add(columnScroll).grow();
+        if(editing){
+            // 固定的“新建序列”：放在滚动区外面，横向滚到最右也一直看得见
+            row.add(new BarButton("+").borderless(true).onClick(() -> addSequence(cat)))
+                .width(BarTheme.u(30f)).height(BarTheme.u(HEAD_H)).top().padLeft(BarTheme.u(4f));
+        }
+        body.add(row).grow();
     }
 
     /** 空状态：一句话 + 一个正中的按钮。 */
     private Table emptyState(String hint, String button, Runnable action){
         Table t = new Table();
-        t.add(BarTheme.dimText(hint)).padBottom(8f).row();
-        t.add(new BarButton(button).accent(true).onClick(action)).size(128f, 26f).row();
+        BarTheme.BarLabel label = BarTheme.dimText(hint);
+        label.setEllipsis(true);
+        t.add(label).padBottom(BarTheme.u(8f)).minWidth(0f).row();
+        t.add(new BarButton(button).accent(true).onClick(action))
+            .size(BarTheme.u(140f), BarTheme.u(30f)).row();
         return t;
     }
 
-    /** 一列 = 列头 + 竖直滚动的蓝图按钮 + （编辑态）列底 “+”。 */
+    /**
+     * 一列 = 列头（固定）+ 竖直滚动的蓝图按钮（编辑态末尾带 “+”）。
+     *
+     * “+” 刻意放进滚动内容里而不是贴在列底：新增一条蓝图它就往下挪一格，
+     * 条目再多也永远跟在最后一张下面，不会被窗口底边裁掉（手机上就是这么丢的）。
+     */
     private Table buildColumn(BarSequence seq){
         Table col = new Table();
         col.top();
 
-        Table head = new Table();
         if(editing){
+            // 序列头也是无边框样式，高度抬高到能舒服地点
             BarButton hb = new BarButton(seq.name).borderless(true).ellipsis(true);
             hb.onClick(() -> openSequenceMenu(seq));
-            head.add(hb).growX().height(20f);
+            col.add(hb).growX().height(BarTheme.u(HEAD_H)).padBottom(BarTheme.u(3f)).row();
         }else{
             BarTheme.BarLabel title = BarTheme.dimText(seq.name).alpha(0.9f);
             title.setEllipsis(true);
-            head.add(title).growX().left().padLeft(3f).height(20f);
+            col.add(title).growX().left().padLeft(BarTheme.u(3f))
+                .height(BarTheme.u(HEAD_H)).padBottom(BarTheme.u(3f)).row();
         }
-        col.add(head).growX().height(20f).padBottom(3f).row();
 
         Table list = new Table();
         list.top();
         for(BarEntry entry : seq.entries){
-            list.add(new BarEntryButton(this, seq, entry)).growX().height(ENTRY_H).padBottom(3f).row();
+            list.add(new BarEntryButton(this, seq, entry)).growX()
+                .height(BarTheme.u(ENTRY_H)).padBottom(BarTheme.u(3f)).row();
         }
-        if(seq.entries.isEmpty()){
-            list.add(BarTheme.dimText(editing ? "点 + 添加" : "空")).growX().left().padLeft(3f).height(18f).row();
-        }
-        col.add(new BarScroll(list)).grow().minHeight(40f).row();
-
         if(editing){
-            col.add(new BarButton("+").borderless(true).onClick(() -> openPicker(seq, null))).growX().height(20f).row();
+            list.add(new BarButton("+").borderless(true).onClick(() -> openPicker(seq, null)))
+                .growX().height(BarTheme.u(ENTRY_H))
+                .padTop(seq.entries.isEmpty() ? 0f : BarTheme.u(3f)).row();
+        }else if(seq.entries.isEmpty()){
+            list.add(BarTheme.dimText("空")).growX().left().padLeft(BarTheme.u(3f))
+                .height(BarTheme.u(20f)).row();
         }
-        return col;
-    }
-
-    /** 编辑态最右一列：“+” 新建序列。 */
-    private Table buildAddColumn(BarCategory cat){
-        Table col = new Table();
-        col.top();
-        col.add(new BarButton("+").borderless(true).onClick(() -> addSequence(cat))).growX().height(20f).row();
-        col.add(BarTheme.dimText("新序列")).growX().padTop(4f).height(18f).row();
+        col.add(new BarScroll(list)).grow().minHeight(BarTheme.u(40f)).row();
         return col;
     }
 
@@ -469,8 +548,9 @@ public class BarPanel extends BarWindow implements BarPickerHost{
         Vec2 p = anchor.localToStageCoordinates(new Vec2(0f, 0f));
         float w = preview.getWidth(), h = preview.getHeight();
 
-        float gx = p.x + anchor.getWidth() + 6f;
-        if(gx + w > Core.graphics.getWidth()) gx = p.x - w - 6f;
+        float gap = BarTheme.u(6f);
+        float gx = p.x + anchor.getWidth() + gap;
+        if(gx + w > Core.graphics.getWidth()) gx = p.x - w - gap;
         float gy = p.y + anchor.getHeight() - h;
 
         float maxX = Math.max(0f, Core.graphics.getWidth() - w);
@@ -573,14 +653,17 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
             shrunk = true;
             swapChild(collapsed);
+            // 窄条尺寸由文字决定，不再受最小值约束，也不需要缩放手柄
+            setGripVisible(false);
 
-            float w = Math.max(80f, Mathf.round(collapsed.getPrefWidth()));
-            float h = Math.max(20f, Mathf.round(collapsed.getPrefHeight()));
+            float w = Math.max(BarTheme.u(80f), Mathf.round(collapsed.getPrefWidth()));
+            float h = Math.max(BarTheme.u(20f), Mathf.round(collapsed.getPrefHeight()));
             setSize(w, h);
             placeClamped(prevX, prevY + prevH - h);
         }else{
             shrunk = false;
             swapChild(content);
+            setGripVisible(true);
 
             setSize(prevW, prevH);
             placeClamped(prevX, prevY);
@@ -591,6 +674,8 @@ public class BarPanel extends BarWindow implements BarPickerHost{
     private void swapChild(Table target){
         clearChildren();
         add(target).grow();
+        // clearChildren 连右下角手柄一起清掉了，换完子表要挂回来
+        reattachGrip();
         invalidate();
     }
 

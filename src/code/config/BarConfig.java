@@ -38,6 +38,12 @@ public final class BarConfig{
     public static float pickerWidth, pickerHeight;
 
     /**
+     * 主面板的尺寸，单位是**逻辑像素**（乘 Scl 才是屏幕像素）。
+     * 0 = 还没拖过，用 BarPanel 的默认值。位置仍走 mainWindow。
+     */
+    public static float mainWidth, mainHeight;
+
+    /**
      * 槽位绑定的蓝图：存文件名（不含扩展名），重启后在 {@code Vars.schematics.all()} 里按名找回。
      * 蓝图没有稳定 id，文件名是唯一在重启后还有意义的东西。null = 未绑定。
      */
@@ -96,7 +102,12 @@ public final class BarConfig{
 
                 Jval w = s.get("windows");
                 if(w != null){
-                    readWindow(w.get("main"), mainWindow);
+                    Jval main = w.get("main");
+                    readWindow(main, mainWindow);
+                    if(main != null){
+                        mainWidth = Math.max(0f, main.getFloat("w", 0f));
+                        mainHeight = Math.max(0f, main.getFloat("h", 0f));
+                    }
                     readWindow(w.get("settings"), settingsWindow);
 
                     Jval picker = w.get("picker");
@@ -221,7 +232,10 @@ public final class BarConfig{
             s.put("colors", c);
 
             Jval w = Jval.newObject();
-            w.put("main", writeWindow(mainWindow));
+            Jval main = writeWindow(mainWindow);
+            if(mainWidth > 0f) main.put("w", (double)mainWidth);
+            if(mainHeight > 0f) main.put("h", (double)mainHeight);
+            w.put("main", main);
             w.put("settings", writeWindow(settingsWindow));
 
             // 选择窗多存两个尺寸；没量过（0）就不写，读的时候自然回落到默认值
@@ -331,6 +345,8 @@ public final class BarConfig{
         resetWindow(pickerWindow);
         pickerWidth = 0f;
         pickerHeight = 0f;
+        mainWidth = 0f;
+        mainHeight = 0f;
     }
 
     private static void resetWindow(WindowState st){
