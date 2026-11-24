@@ -64,9 +64,9 @@ public final class BarTheme{
         return u(mobile ? mobileValue : desktop);
     }
 
-    /** 图标按钮（× / ⚙ / 三条横线）的边长：手机上 18 逻辑像素的命中区手指很难点中。 */
+    /** 图标按钮（× / ⚙ / 三条横线）的边长：手机 24，比 26 少占一点标题行，面板能再窄一档。 */
     public static float icon(){
-        return u(mobile ? 26f : 18f);
+        return u(mobile ? 24f : 18f);
     }
 
     private static float lineHeight = -1f;

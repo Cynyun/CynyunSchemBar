@@ -19,8 +19,10 @@ import mindustry.game.Schematic;
 public class BarSchematicInfoPopup extends Table{
 
     public static final float WIDTH = 300f;
+    /** 手机宽度：桌面的一半多一点，正好放得下 2 列消耗和一行名字，不再盖住半个屏。 */
+    private static final float WIDTH_MOBILE = 180f;
     /** 左右内边距。 */
-    private static final float MARGIN = 8f;
+    private static final float MARGIN = 8f, MARGIN_MOBILE = 6f;
 
     private final Schematic schem;
     /** 指针是否停在浮层上。由 enter/exit 维护：Picker 每帧问它来决定要不要收起浮层。 */
@@ -30,11 +32,11 @@ public class BarSchematicInfoPopup extends Table{
         this.schem = schem;
 
         touchable = Touchable.enabled;
-        float w = BarTheme.u(WIDTH), margin = BarTheme.u(MARGIN);
+        float w = BarTheme.d(WIDTH, WIDTH_MOBILE), margin = BarTheme.d(MARGIN, MARGIN_MOBILE);
         margin(margin);
         top();
 
-        add(new BarSchematicInfo(schem, w - margin * 2f, BarSchematicInfo.POPUP_DESC_CHARS)).growX();
+        add(new BarSchematicInfo(schem, w - margin * 2f, BarSchematicInfo.popupDescChars())).growX();
 
         addListener(new InputListener(){
             @Override

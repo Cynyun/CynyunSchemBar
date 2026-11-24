@@ -25,7 +25,7 @@ public class BarSchematicInfoWindow extends BarWindow{
     /** 逻辑单位（乘 Scl 后才是像素）；HEIGHT 只是初值，最终高度由内容 pref 决定。 */
     public static final float WIDTH = 380f, HEIGHT = 400f;
     /** 手机上 380 逻辑宽已接近半个屏，缩到 330 好让槽位窗还露在外面。 */
-    private static final float WIDTH_MOBILE = 330f;
+    private static final float WIDTH_MOBILE = 280f;
     /** 缩放下限（逻辑单位）：正文在滚动区里，可以压得比内容矮。 */
     private static final float MIN_W = 280f, MIN_H = 180f;
     private static final float MIN_W_MOBILE = 260f, MIN_H_MOBILE = 160f;

@@ -2,7 +2,7 @@ package code;
 
 import arc.Core;
 import arc.graphics.g2d.Draw;
-import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.Fill;
 import arc.input.KeyCode;
 import arc.math.Mathf;
 import arc.scene.Element;
@@ -13,15 +13,20 @@ import arc.scene.event.Touchable;
 /**
  * 窗口右下角的缩放手柄。
  *
- * 只有 16px 正方形里的“右下三角”响应，左上那片留白仍然可以拖动窗口——否则手柄会占掉
- * 一大块本该能拖的区域。三条 1px 斜线从左下指向右上，长度 6/10/14，正好铺满这个三角。
+ * 外观是一块静态点阵：桌面 4×4 个点、手机 3×3 个点。原来的三条 1px 斜线在高 DPI 手机上
+ * 只有 1 物理像素，等于看不见，所以改成实心小方块拼的点阵，常驻显示、不靠悬停才变亮。
+ *
+ * 命中区是以右下角为顶点的正方形（桌面 24、手机 30 逻辑像素），但仍只认其中的
+ * “右下三角”，左上那片留白照样能拖窗口——否则手柄会吃掉半块内容区。
  *
  * 窗口自己负责 setSize / 重排；这里只把“用户想要多宽多高”算出来回调出去。
  */
 public class BarResizeGrip extends Element{
 
-    /** 手柄正方形的边长（逻辑像素，实际用 BarTheme.u 换算）。 */
-    public static final float SIZE = 16f;
+    /** 命中正方形的边长（逻辑像素，实际用 BarTheme.d 换算）。 */
+    public static final float SIZE = 24f, SIZE_MOBILE = 30f;
+    /** 点阵每个点、点间距、距边距（逻辑像素）。 */
+    private static final float DOT = 2f, DOT_GAP = 3f, DOT_MARGIN = 4f;
 
     public interface Handler{
         /** 拖动过程中持续回调，参数已经夹在屏幕和最小尺寸之间。 */
@@ -49,7 +54,7 @@ public class BarResizeGrip extends Element{
         this.handler = handler;
 
         touchable = Touchable.enabled;
-        gripSize = BarTheme.u(SIZE);
+        gripSize = BarTheme.d(SIZE, SIZE_MOBILE);
         setSize(gripSize, gripSize);
 
         addListener(new InputListener(){
@@ -111,16 +116,20 @@ public class BarResizeGrip extends Element{
     public void draw(){
         float a = parentAlpha;
 
-        // 三条平行斜线，从底边走到右边，端点正好贴着边框内侧。
-        // 常态就得到 0.55——太淡的话在深色战场上根本看不出来，用户也就不知道能拖。
-        Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b,
-            (dragging ? 1f : over ? 0.95f : 0.55f) * a);
-        Lines.stroke(1f);
-        // 三条斜线按边长等比缩放：桌面上还是 5/9/13，手机上跟着放大
-        float m = gripSize * 0.19f;
-        for(int i = 0; i < 3; i++){
-            float d = gripSize * (0.31f + i * 0.25f);
-            Lines.line(width - d, m, width - m, d);
+        // 静态点阵：手机 3×3、桌面 4×4。点用实心方块画，2 逻辑像素在手机上约 4~5 物理像素，
+        // 常态 0.75 的亮度在深色战场上也能一眼看到；只有按下时才更亮，悬停不做变化（静态按钮）。
+        int dots = BarTheme.mobile ? 3 : 4;
+        float dot = BarTheme.u(DOT);
+        float gap = BarTheme.u(DOT_GAP);
+        float margin = BarTheme.u(DOT_MARGIN);
+
+        Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, (dragging ? 1f : 0.75f) * a);
+        for(int row = 0; row < dots; row++){
+            float y0 = margin + row * (dot + gap);
+            for(int col = 0; col < dots; col++){
+                float x0 = width - margin - dot - col * (dot + gap);
+                Fill.crect(x0, y0, dot, dot);
+            }
         }
         Draw.reset();
     }

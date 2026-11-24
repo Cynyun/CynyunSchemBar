@@ -30,16 +30,18 @@ public class BarPanel extends BarWindow implements BarPickerHost{
     // 尺寸一律“桌面值 + 手机值”成对出现，取值过 BarTheme.d()：手机逻辑屏只有 500~640 高，
     // 桌面那套（列宽 72、按钮高 28）在手机上会把面板顶到屏幕中段，压住准星和建造区。
     /** COL_GAP 只留 2：列与列几乎贴在一起，宽度主要让给蓝图按钮本身。 */
-    private static final float COL_W = 72f, COL_W_MOBILE = 62f, COL_GAP = 2f;
+    private static final float COL_W = 72f, COL_W_MOBILE = 54f, COL_GAP = 2f;
     /** 蓝图按钮高度：原来 24 太扁，手机上文字几乎贴着框。 */
-    private static final float ENTRY_H = 28f, ENTRY_H_MOBILE = 26f;
+    private static final float ENTRY_H = 28f, ENTRY_H_MOBILE = 24f;
     /** 栏目按钮高度（原来 24 太扁，手机上文字上下都快贴边了）。 */
-    private static final float TAB_H = 30f, TAB_H_MOBILE = 26f;
+    private static final float TAB_H = 30f, TAB_H_MOBILE = 24f;
     /** 列头高度。 */
-    private static final float HEAD_H = 26f, HEAD_H_MOBILE = 22f;
+    private static final float HEAD_H = 26f, HEAD_H_MOBILE = 20f;
     private static final float DEFAULT_H = 300f;
     /** 内容表的内边距；最小值要把它算进去。 */
     private static final float PAD = 8f, PAD_MOBILE = 6f;
+    /** 手机上下内边距单独给：左右要保持 6，上下压到 4，否则面板顶/底各空出一截。 */
+    private static final float PAD_Y_MOBILE = 4f;
 
     /** 初始落点：左上角留一点、顶部躲开 HUD。 */
     private static final float MARGIN = 12f, TOP_OFFSET = 48f;
@@ -51,17 +53,17 @@ public class BarPanel extends BarWindow implements BarPickerHost{
         return BarTheme.mobile ? Math.min(natural, Core.graphics.getWidth() * 0.45f) : natural;
     }
 
-    /** 默认高：桌面 300；手机取屏高 38%（该机逻辑屏高约 520，300 就是 58%，顶到屏幕中段）。 */
+    /** 默认高：桌面 300；手机取屏高 30%（38% 时上下仍各留一大截，几乎占掉半个屏）。 */
     private static float defaultHeight(){
         return BarTheme.mobile
-            ? Math.min(BarTheme.u(320f), Core.graphics.getHeight() * 0.38f)
+            ? Math.min(BarTheme.u(180f), Core.graphics.getHeight() * 0.30f)
             : BarTheme.u(DEFAULT_H);
     }
 
-    /** 可用高度上限：手机 0.55 屏，留出上半屏给战场与准星。 */
+    /** 可用高度上限：手机 0.42 屏，留出大半屏给战场与准星。 */
     private static float heightLimit(){
         float screen = Core.graphics.getHeight();
-        return BarTheme.mobile ? Math.min(screen - BarTheme.u(8f), screen * 0.55f) : screen - BarTheme.u(8f);
+        return BarTheme.mobile ? Math.min(screen - BarTheme.u(8f), screen * 0.42f) : screen - BarTheme.u(8f);
     }
 
     /** 面板名字：展开态在标题行，收起态是窄条上唯一的文字。 */
@@ -105,8 +107,10 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
         // ------------------------------------------------------------ 展开态
         content = new Table();
-        content.margin(BarTheme.d(PAD, PAD_MOBILE));
-        content.defaults().pad(BarTheme.d(2f, 2f));
+        // 上下内边距单独压：手机默认高只有屏高 30%，每省 2 逻辑像素就多一行蓝图的空间
+        content.margin(BarTheme.d(PAD, PAD_Y_MOBILE), BarTheme.d(PAD, PAD_MOBILE),
+            BarTheme.d(PAD, PAD_Y_MOBILE), BarTheme.d(PAD, PAD_MOBILE));
+        content.defaults().pad(BarTheme.d(2f, 1f));
         content.top();
 
         // 标题行：编辑开关 + 设置 + 收起，后两个是一次性入口。
@@ -115,8 +119,8 @@ public class BarPanel extends BarWindow implements BarPickerHost{
         BarTheme.BarLabel title = BarTheme.accentText(TITLE);
         title.setEllipsis(true);
         head.add(title).growX().left().minWidth(0f);
-        // 标题行高要同时容得下文字和图标按钮：手机上图标命中区 26，行不能被压在 22
-        float headH = Math.max(BarTheme.rowH(HEAD_H, HEAD_H_MOBILE), BarTheme.icon() + BarTheme.u(4f));
+        // 标题行高要同时容得下文字和图标按钮：手机上图标 24，行高留 2 就够，不再多垫
+        float headH = Math.max(BarTheme.rowH(HEAD_H, HEAD_H_MOBILE), BarTheme.icon() + BarTheme.u(2f));
         float btnH = headH - BarTheme.u(4f);
         editBtn = new BarButton("编辑").borderless(true).stateful(true).onClick(this::toggleEditing);
         head.add(editBtn).size(BarTheme.d(46f, 44f), btnH);
@@ -124,15 +128,17 @@ public class BarPanel extends BarWindow implements BarPickerHost{
         head.add(new BarButton("−").borderless(true).onClick(() -> setCollapsed(true))).size(BarTheme.icon(), btnH);
         content.add(head).growX().height(headH).row();
 
-        content.add(new BarDivider()).growX().height(1f).padTop(BarTheme.u(2f)).padBottom(BarTheme.u(4f)).row();
+        content.add(new BarDivider()).growX().height(1f)
+            .padTop(BarTheme.d(2f, 1f)).padBottom(BarTheme.d(4f, 1f)).row();
 
         // 栏目行：一排单选按钮横向滚 + 右端固定的“新建栏目”（编辑态才出现，不随滚动跑掉）
         tabs.left();
         tabs.defaults().padRight(BarTheme.u(4f));
         tabScroll = new BarScroll(tabs, true);
-        content.add(tabRow).growX().height(BarTheme.rowH(TAB_H + 8f, TAB_H_MOBILE + 8f)).row();
+        content.add(tabRow).growX().height(BarTheme.rowH(TAB_H + 8f, TAB_H_MOBILE)).row();
 
-        content.add(new BarDivider()).growX().height(1f).padTop(BarTheme.u(4f)).padBottom(BarTheme.u(4f)).row();
+        content.add(new BarDivider()).growX().height(1f)
+            .padTop(BarTheme.d(4f, 1f)).padBottom(BarTheme.d(4f, 1f)).row();
 
         // 序列区：横向滚动，一列一个序列，列内自己竖直滚动
         columns.left().top();
@@ -142,7 +148,7 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
         // ------------------------------------------------------------ 收起态
         collapsed = new Table();
-        collapsed.margin(BarTheme.u(4f), BarTheme.u(10f), BarTheme.u(4f), BarTheme.u(10f));
+        collapsed.margin(BarTheme.d(4f, 2f), BarTheme.u(10f), BarTheme.d(4f, 2f), BarTheme.u(10f));
         collapsed.add(BarTheme.accentText(SHORT_NAME)).left();
         collapsed.add(new BarButton("+").borderless(true).onClick(() -> setCollapsed(false))).size(BarTheme.icon(), btnH);
 
@@ -152,7 +158,7 @@ public class BarPanel extends BarWindow implements BarPickerHost{
 
         // 最小值 = 标题行真实宽度（TITLE + 三个按钮），高度取它的一半
         float minW = head.getPrefWidth() + BarTheme.d(PAD * 2f + 4f, PAD_MOBILE * 2f + 4f);
-        float minH = Math.max(BarTheme.u(60f), minW * 0.5f);
+        float minH = Math.max(BarTheme.u(60f), minW * (BarTheme.mobile ? 0.42f : 0.5f));
         enableResize(minW, minH);
         setSize(Math.max(width, minW), Math.max(height, minH));
 
@@ -168,7 +174,7 @@ public class BarPanel extends BarWindow implements BarPickerHost{
     protected void defaultSpawn(){
         // 屏幕左上角，y 轴向上，顶部留出 HUD 状态栏高度（都要乘 Scl，否则手机上会被 HUD 盖住）
         setPosition(Mathf.round(BarTheme.d(MARGIN, 8f)),
-            Mathf.round(Math.max(0f, Core.graphics.getHeight() - height - BarTheme.d(TOP_OFFSET, 40f))));
+            Mathf.round(Math.max(0f, Core.graphics.getHeight() - height - BarTheme.d(TOP_OFFSET, 32f))));
     }
 
     // ------------------------------------------------------------------ 尺寸
@@ -258,7 +264,7 @@ public class BarPanel extends BarWindow implements BarPickerHost{
                 .minWidth(BarTheme.d(40f, 36f)).maxWidth(BarTheme.d(150f, 110f));
         }
 
-        tabRow.add(tabScroll).growX().height(BarTheme.rowH(TAB_H + 4f, TAB_H_MOBILE + 4f));
+        tabRow.add(tabScroll).growX().height(BarTheme.rowH(TAB_H + 4f, TAB_H_MOBILE));
 
         // “+” 只在编辑态出现：普通态多一个看不懂的加号只会误触
         if(editing){

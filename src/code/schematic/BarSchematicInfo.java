@@ -23,10 +23,16 @@ import mindustry.ui.dialogs.SchematicsDialog;
  */
 public class BarSchematicInfo extends Table{
 
-    /** 预览图高度。浮层和详情窗共用，避免观感不一致。 */
-    public static final float PREVIEW_H = 150f;
+    /** 预览图高度。浮层和详情窗共用，避免观感不一致。手机上压到 72，把空间让给文字。 */
+    public static final float PREVIEW_H = 150f, PREVIEW_H_MOBILE = 72f;
     /** 描述在浮层里截断到这么长；详情窗有滚动区，传 0 表示全文。 */
     public static final int POPUP_DESC_CHARS = 160;
+    public static final int POPUP_DESC_CHARS_MOBILE = 60;
+
+    /** 浮层/详情窗可用的描述长度：手机 60 字足够看清用途，长描述会把这个小浮层撑到半屏。 */
+    public static int popupDescChars(){
+        return BarTheme.mobile ? POPUP_DESC_CHARS_MOBILE : POPUP_DESC_CHARS;
+    }
 
     private final Schematic schem;
 
@@ -42,7 +48,9 @@ public class BarSchematicInfo extends Table{
         defaults().pad(BarTheme.u(1f));
 
         // ---------------------------------------------------------------- 预览
-        add(new SchematicsDialog.SchematicImage(schem)).growX().height(BarTheme.u(PREVIEW_H)).padBottom(BarTheme.u(4f)).row();
+        // 图片永远装在内宽 × 固定高里（SchematicImage 自己 Scaling.fit），不会溢出背景
+        add(new SchematicsDialog.SchematicImage(schem)).growX()
+            .height(BarTheme.d(PREVIEW_H, PREVIEW_H_MOBILE)).padBottom(BarTheme.d(4f, 3f)).row();
 
         add(BarTheme.text(schem.name())).growX().left().ellipsis(true).row();
         add(BarTheme.dimText(schem.width + " × " + schem.height + "    方块 " + schem.tiles.size))
@@ -64,17 +72,21 @@ public class BarSchematicInfo extends Table{
         if(reqs.length > 0){
             Table cost = new Table();
             cost.defaults().pad(0f);
-            float cellW = (width - BarTheme.u(6f)) / 4f;
+            // 手机浮层只有 180 宽，4 列每格只剩 40，图标+数字一定会叠；改 2 列
+            int cols = BarTheme.mobile ? 2 : 4;
+            float iconSize = BarTheme.d(14f, 12f);
+            float gapAfterIcon = BarTheme.d(19f, 17f);
+            float cellW = (width - BarTheme.u(6f)) / cols;
             int i = 0;
             for(ItemStack st : reqs){
                 Table cell = new Table();
-                cell.add(new Image(st.item.uiIcon)).size(BarTheme.u(14f)).padRight(BarTheme.u(3f));
+                cell.add(new Image(st.item.uiIcon)).size(iconSize).padRight(BarTheme.u(3f));
                 Label amount = new Label(String.valueOf(st.amount), Styles.defaultLabel);
                 amount.setEllipsis(true);
                 // 数量列给固定宽度，五位数的数量也压得住，不会把整行顶宽
-                cell.add(amount).width(cellW - BarTheme.u(19f)).left();
+                cell.add(amount).width(cellW - gapAfterIcon).left();
                 cost.add(cell).width(cellW).padBottom(BarTheme.u(2f));
-                if(++i % 4 == 0) cost.row();
+                if(++i % cols == 0) cost.row();
             }
             add(cost).growX().left().row();
         }
