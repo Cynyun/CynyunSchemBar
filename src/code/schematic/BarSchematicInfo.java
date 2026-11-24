@@ -1,8 +1,12 @@
 package code;
 
 import arc.graphics.Color;
+import arc.math.Mathf;
+import arc.scene.Element;
+import arc.scene.Group;
 import arc.scene.ui.Image;
 import arc.scene.ui.Label;
+import arc.scene.ui.layout.Cell;
 import arc.scene.ui.layout.Table;
 import arc.util.Strings;
 import mindustry.game.Schematic;
@@ -23,18 +27,14 @@ import mindustry.ui.dialogs.SchematicsDialog;
  */
 public class BarSchematicInfo extends Table{
 
-    /** 预览图高度。浮层和详情窗共用，避免观感不一致。手机上压到 72，把空间让给文字。 */
-    public static final float PREVIEW_H = 150f, PREVIEW_H_MOBILE = 72f;
-    /** 描述在浮层里截断到这么长；详情窗有滚动区，传 0 表示全文。 */
-    public static final int POPUP_DESC_CHARS = 160;
-    public static final int POPUP_DESC_CHARS_MOBILE = 60;
-
-    /** 浮层/详情窗可用的描述长度：手机 60 字足够看清用途，长描述会把这个小浮层撑到半屏。 */
+    /** 浮层/详情窗可用的描述长度；数值与设备差异见 {@link BarMetrics#infoDescChars()}。 */
     public static int popupDescChars(){
-        return BarTheme.mobile ? POPUP_DESC_CHARS_MOBILE : POPUP_DESC_CHARS;
+        return BarMetrics.infoDescChars();
     }
 
     private final Schematic schem;
+    /** 本表可用宽度（外层内边距已经扣掉）。手机上所有行都按它定死，避免被文字顶宽。 */
+    private final float contentWidth;
 
     /**
      * @param width        本表可用宽度（外层内边距已经扣掉）
@@ -42,19 +42,21 @@ public class BarSchematicInfo extends Table{
      */
     public BarSchematicInfo(Schematic schem, float width, int maxDescChars){
         this.schem = schem;
+        this.contentWidth = width;
 
         setWidth(width);
         top();
-        defaults().pad(BarTheme.u(1f));
+        defaults().pad(BarMetrics.infoCellPad());
 
         // ---------------------------------------------------------------- 预览
         // 图片永远装在内宽 × 固定高里（SchematicImage 自己 Scaling.fit），不会溢出背景
-        add(new SchematicsDialog.SchematicImage(schem)).growX()
-            .height(BarTheme.d(PREVIEW_H, PREVIEW_H_MOBILE)).padBottom(BarTheme.d(4f, 3f)).row();
+        Cell<?> preview = add(new SchematicsDialog.SchematicImage(schem))
+            .height(BarMetrics.infoPreviewH()).padBottom(BarMetrics.infoPreviewPadBottom());
+        if(BarTheme.mobile) preview.width(rowWidth()); else preview.growX();
+        preview.row();
 
-        add(BarTheme.text(schem.name())).growX().left().ellipsis(true).row();
-        add(BarTheme.dimText(schem.width + " × " + schem.height + "    方块 " + schem.tiles.size))
-            .growX().left().row();
+        labelRow(BarTheme.text(schem.name()), false).row();
+        labelRow(BarTheme.dimText(schem.width + " × " + schem.height + "    方块 " + schem.tiles.size), false).row();
 
         // ---------------------------------------------------------------- 消耗
         ItemStack[] reqs = schem.requirements().toArray();
@@ -62,48 +64,52 @@ public class BarSchematicInfo extends Table{
         float cons = schem.powerConsumption() * 60f, prod = schem.powerProduction() * 60f;
         boolean hasPower = cons > 0.001f || prod > 0.001f;
 
-        if(reqs.length > 0 || hasPower){
-            add(BarTheme.accentText("· 消耗")).growX().left().padTop(BarTheme.u(4f)).row();
-        }else{
-            add(BarTheme.accentText("· 消耗")).growX().left().padTop(BarTheme.u(4f)).row();
-            add(BarTheme.dimText("无")).growX().left().row();
+        labelRow(BarTheme.accentText("· 消耗"), false).padTop(BarMetrics.infoRowPadTop()).row();
+        if(reqs.length == 0 && !hasPower){
+            labelRow(BarTheme.dimText("无"), false).row();
         }
 
         if(reqs.length > 0){
             Table cost = new Table();
             cost.defaults().pad(0f);
             // 手机浮层只有 180 宽，4 列每格只剩 40，图标+数字一定会叠；改 2 列
-            int cols = BarTheme.mobile ? 2 : 4;
-            float iconSize = BarTheme.d(14f, 12f);
-            float gapAfterIcon = BarTheme.d(19f, 17f);
-            float cellW = (width - BarTheme.u(6f)) / cols;
+            int cols = BarMetrics.infoCostCols();
+            float iconSize = BarMetrics.infoCostIcon();
+            float gapAfterIcon = BarMetrics.infoCostIconGap();
+            float cellW = (width - BarMetrics.infoCostInset()) / cols;
             int i = 0;
             for(ItemStack st : reqs){
                 Table cell = new Table();
-                cell.add(new Image(st.item.uiIcon)).size(iconSize).padRight(BarTheme.u(3f));
+                cell.add(new Image(st.item.uiIcon)).size(iconSize).padRight(BarMetrics.infoCostIconPad());
                 Label amount = new Label(String.valueOf(st.amount), Styles.defaultLabel);
                 amount.setEllipsis(true);
                 // 数量列给固定宽度，五位数的数量也压得住，不会把整行顶宽
                 cell.add(amount).width(cellW - gapAfterIcon).left();
-                cost.add(cell).width(cellW).padBottom(BarTheme.u(2f));
+                cost.add(cell).width(cellW).padBottom(BarMetrics.infoCostCellPadBottom());
                 if(++i % cols == 0) cost.row();
             }
-            add(cost).growX().left().row();
+            Cell<?> costCell = add(cost).left();
+            cost.left();
+            if(BarTheme.mobile) costCell.width(rowWidth()); else costCell.growX();
+            costCell.row();
         }
 
         if(hasPower){
             Table power = new Table();
             power.defaults().pad(0f);
             if(prod > 0.001f){
-                power.image(Icon.powerSmall).color(Pal.powerLight).size(BarTheme.u(13f)).padRight(BarTheme.u(3f));
+                power.image(Icon.powerSmall).color(Pal.powerLight).size(BarMetrics.infoPowerIcon()).padRight(BarMetrics.infoCostIconPad());
                 power.add(powerText("+" + Strings.autoFixed(prod, 2) + "/s", Pal.powerLight)).left();
             }
             if(cons > 0.001f){
-                if(prod > 0.001f) power.add().width(BarTheme.u(14f));
-                power.image(Icon.powerSmall).color(Pal.remove).size(BarTheme.u(13f)).padRight(BarTheme.u(3f));
+                if(prod > 0.001f) power.add().width(BarMetrics.infoPowerGap());
+                power.image(Icon.powerSmall).color(Pal.remove).size(BarMetrics.infoPowerIcon()).padRight(BarMetrics.infoCostIconPad());
                 power.add(powerText("-" + Strings.autoFixed(cons, 2) + "/s", Pal.remove)).left();
             }
-            add(power).growX().left().padTop(BarTheme.u(1f)).row();
+            Cell<?> powerCell = add(power).left().padTop(BarMetrics.infoPowerPadTop());
+            power.left();
+            if(BarTheme.mobile) powerCell.width(rowWidth()); else powerCell.growX();
+            powerCell.row();
         }
 
         // ---------------------------------------------------------------- 标签
@@ -113,14 +119,50 @@ public class BarSchematicInfo extends Table{
                 if(i > 0) sb.append(" · ");
                 sb.append(schem.labels.get(i));
             }
-            add(BarTheme.dimText(sb.toString())).growX().left().padTop(BarTheme.u(4f)).ellipsis(true).row();
+            labelRow(BarTheme.dimText(sb.toString()), false).padTop(BarMetrics.infoRowPadTop()).row();
         }
 
         // ---------------------------------------------------------------- 描述
         String desc = schem.description();
         if(desc != null && !desc.isEmpty()){
             if(maxDescChars > 0 && desc.length() > maxDescChars) desc = desc.substring(0, maxDescChars) + "…";
-            add(BarTheme.dimText(desc)).growX().left().padTop(BarTheme.u(4f)).wrap().row();
+            labelRow(BarTheme.dimText(desc), true).padTop(BarMetrics.infoRowPadTop()).row();
+        }
+
+        // 手机专用那一套：文字缩回桌面字号 + 按固定宽度布局；最后再裁一刀兜底，
+        // 万一还有哪行算宽了，也是被切在浮层背景里，而不是画到战场上。
+        if(BarTheme.mobile){
+            scaleLabels(this, mobileFontScale());
+            setClip(true);
+        }
+    }
+
+    /** 一行文字：手机定死宽度（ellipsis / wrap 才真正生效），桌面沿用原来的 growX。 */
+    private Cell<Label> labelRow(Label label, boolean wrap){
+        Cell<Label> cell = add(label).left();
+        if(wrap) cell.wrap(); else cell.ellipsis(true);
+        if(BarTheme.mobile) cell.width(rowWidth()); else cell.growX();
+        return cell;
+    }
+
+    /** 手机上一行的可用宽度：整表宽减去 cell 左右各 1 的 pad。 */
+    private float rowWidth(){
+        return contentWidth - BarMetrics.infoRowInset();
+    }
+
+    /**
+     * 手机专用缩放系数：把文字缩回“桌面字号”那一档，不再跟 Scl 一起放大。
+     * 手机上 Scl 通常 1.6~2.2，1 / Scl 约 0.5~0.6；桌面 Scl = 1 时算出来就是 1，等于不生效。
+     */
+    private static float mobileFontScale(){
+        return Mathf.clamp(1f / BarTheme.u(1f), 0.5f, 1f);
+    }
+
+    private static void scaleLabels(Element root, float scale){
+        if(!(root instanceof Group)) return;
+        for(Element child : ((Group)root).getChildren()){
+            if(child instanceof Label) ((Label)child).setFontScale(scale);
+            scaleLabels(child, scale);
         }
     }
 

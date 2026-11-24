@@ -28,8 +28,8 @@ public class BarTagRow extends Button{
         Label amount = new Label(String.valueOf(count), new Label.LabelStyle(Styles.defaultLabel));
         amount.color.set(BarTheme.dim.r, BarTheme.dim.g, BarTheme.dim.b, 0.75f);
 
-        add(name).growX().padLeft(8f).left();
-        add(amount).padRight(8f).right();
+        add(name).growX().padLeft(BarMetrics.sp8()).left();
+        add(amount).padRight(BarMetrics.sp8()).right();
 
         setSize(getPrefWidth(), getPrefHeight());
     }
@@ -41,7 +41,7 @@ public class BarTagRow extends Button{
         // 选中态和悬停态用同一种淡底，只靠左侧竖线区分“已经在筛选里”
         if(isChecked()){
             BarTheme.fillAccent(x, y, width, height, (isOver() ? 0.22f : 0.14f) * a);
-            BarTheme.fillAccent(x, y, 2f, height, 0.9f * a);
+            BarTheme.fillAccent(x, y, BarMetrics.sp2(), height, 0.9f * a);
         }else if(isOver()){
             BarTheme.fill(x, y, width, height, (isPressed() ? 0.20f : 0.12f) * a);
         }

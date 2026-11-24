@@ -17,10 +17,6 @@ import mindustry.Vars;
  */
 public class BarConfirm extends Table{
 
-    /** 逻辑单位（乘 Scl 后才是像素）。 */
-    public static final float WIDTH = 300f;
-    private static final float BTN_H = 24f, PAD = 2f, MARGIN = 10f;
-
     private final InputListener outside = new InputListener(){
         @Override
         public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
@@ -46,27 +42,27 @@ public class BarConfirm extends Table{
         touchable = Touchable.enabled;
         setTransform(false);
 
-        margin(BarTheme.u(MARGIN));
+        margin(BarMetrics.dialogMargin());
         top();
 
         add(BarTheme.accentText(title)).growX().left().row();
-        add(new BarDivider()).growX().height(1f)
-            .padTop(BarTheme.u(4f)).padBottom(BarTheme.u(6f)).row();
+        add(new BarDivider()).growX().height(BarMetrics.hairline())
+            .padTop(BarMetrics.dialogSepTop()).padBottom(BarMetrics.dialogSepBottom()).row();
 
         Table body = new Table();
         body.add(BarTheme.dimText(message)).growX().left().row();
         add(body).growX().row();
 
         Table btns = new Table();
-        btns.defaults().growX().height(BarTheme.u(BTN_H)).pad(BarTheme.u(PAD));
+        btns.defaults().growX().height(BarMetrics.dialogBtnH()).pad(BarMetrics.sp2());
         btns.add(new BarButton("取消").onClick(this::close));
         btns.add(new BarButton(okText).accent(true).onClick(() -> {
             close();
             onOk.run();
         }));
-        add(btns).growX().padTop(BarTheme.u(MARGIN)).row();
+        add(btns).growX().padTop(BarMetrics.dialogBtnRowPad()).row();
 
-        setSize(BarTheme.u(WIDTH), getPrefHeight());
+        setSize(BarMetrics.dialogW(), getPrefHeight());
         show();
     }
 

@@ -1,10 +1,10 @@
 package code;
 
 import arc.Core;
-import arc.scene.Element;
-import arc.scene.event.InputEvent;
-import arc.scene.event.InputListener;
+import arc.math.Mathf;
+import arc.scene.event.ClickListener;
 import arc.util.Time;
+import arc.util.Tmp;
 import mindustry.game.Schematic;
 
 /**
@@ -34,7 +34,6 @@ public class BarEntryButton extends BarButton{
     /** 解析结果，null = 未绑定或库里已经找不到。 */
     private final Schematic schematic;
 
-    private boolean touchOver;
     /** 是否已经让面板弹出了自己的浮层（防止每帧重复创建）。 */
     private boolean shown;
     private float hoverTime, pressTime;
@@ -52,27 +51,6 @@ public class BarEntryButton extends BarButton{
         // 无边框样式：一列条目紧贴成一条列表，没有四角括号，靠悬停淡底提示指针位置
         borderless(true);
         onClick(this::clicked);
-
-        // 只跟踪“手指按在按钮上”这一件事：鼠标悬停改成每帧读 isOver()，见 act()
-        addListener(new InputListener(){
-            @Override
-            public void enter(InputEvent event, float x, float y, int pointer, Element fromActor){
-                if(pointer != -1) touchOver = true;
-            }
-
-            @Override
-            public void exit(InputEvent event, float x, float y, int pointer, Element toActor){
-                if(pointer != -1 && !inside(toActor)) touchOver = false;
-            }
-        });
-    }
-
-    /** target 是自己或自己的后代。移到子元素上不算离开。 */
-    private boolean inside(Element target){
-        for(Element e = target; e != null; e = e.parent){
-            if(e == this) return true;
-        }
-        return false;
     }
 
     @Override
@@ -99,15 +77,27 @@ public class BarEntryButton extends BarButton{
             release();
         }
 
-        // 触摸长按：不依赖按钮内部的 ClickListener（它默认会吃掉事件），
-        // 只看“手指还在按着”和 enter 时记下的 touchOver。
-        if(touchOver && Core.input.isTouched() && schematic != null){
-            pressTime += delta;
-            if(pressTime >= LONG_PRESS){
+        // 触摸长按：直接问按钮自己的 ClickListener“手指此刻是不是按在我身上”。
+        // 以前用 enter/exit 记一个 touchOver 标记 + 全局 Core.input.isTouched()：手机上只要漏掉
+        // 一次 exit，标记就永久为 true，之后在屏幕任意位置按住 0.5 秒都会弹这个按钮的详情。
+        // 现在 pressed 只由“按在本按钮上的 touchDown”置位，touchUp / 被 ScrollPane 取消都会清掉。
+        ClickListener clicks = getClickListener();
+        if(clicks.isPressed() && schematic != null){
+            // 手指在按钮上按住不动才算长按；横向拖动（滚动列表）或滑出按钮就取消
+            Tmp.v1.set(Core.input.mouseX(), Core.input.mouseY());
+            stageToLocalCoordinates(Tmp.v1);
+            boolean still = Mathf.dst(Tmp.v1.x, Tmp.v1.y, clicks.getTouchDownX(), clicks.getTouchDownY())
+                <= BarMetrics.sp12();
+            if(still){
+                pressTime += delta;
+                if(pressTime >= LONG_PRESS){
+                    pressTime = 0f;
+                    longAt = Time.time;
+                    shown = true;
+                    owner.showPreview(this);
+                }
+            }else{
                 pressTime = 0f;
-                longAt = Time.time;
-                shown = true;
-                owner.showPreview(this);
             }
         }else{
             pressTime = 0f;

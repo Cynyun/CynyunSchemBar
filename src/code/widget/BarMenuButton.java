@@ -15,13 +15,6 @@ import arc.scene.ui.Button;
  */
 public class BarMenuButton extends Button{
 
-    /** 线条长度。 */
-    private static final float LINE = 13f;
-    /** 相邻两条线的中心距。 */
-    private static final float GAP = 4f;
-    /** 线宽：跟正文文字的字重对齐，别比文字粗。 */
-    private static final float THICK = 1.4f;
-
     public BarMenuButton(float size){
         // 空样式：底图全部由 draw() 画
         super(new ButtonStyle());
@@ -48,7 +41,7 @@ public class BarMenuButton extends Button{
 
         Draw.color(BarTheme.text.r, BarTheme.text.g, BarTheme.text.b,
             (isDisabled() ? 0.25f : isOver() ? 1f : 0.7f) * a);
-        float thick = BarTheme.u(THICK), gap = BarTheme.u(GAP), len = BarTheme.u(LINE);
+        float thick = BarMetrics.menuLinesThick(), gap = BarMetrics.menuLinesGap(), len = BarMetrics.menuLinesW();
         Lines.stroke(thick);
 
         float cx = x + width / 2f;

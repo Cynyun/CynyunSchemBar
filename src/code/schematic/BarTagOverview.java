@@ -18,9 +18,6 @@ import java.util.List;
  */
 public class BarTagOverview extends BarWindow{
 
-    public static final float WIDTH = 300f;
-    private static final float ROW_H = 24f, LIST_MIN = 60f, LIST_MAX = 240f;
-
     private final BarSchematicPicker picker;
     private final BarConfig.WindowState state = new BarConfig.WindowState();
     private final Table list = new Table();
@@ -29,34 +26,34 @@ public class BarTagOverview extends BarWindow{
     private float anchorX, anchorY;
 
     public BarTagOverview(BarSchematicPicker picker){
-        super(WIDTH, 200f);
+        super(BarMetrics.tagOverviewW(), BarMetrics.tagOverviewH());
         this.picker = picker;
 
-        margin(8f);
-        defaults().pad(2f);
+        margin(BarMetrics.sp8());
+        defaults().pad(BarMetrics.sp2());
         top();
 
         Table head = new Table();
         head.add(BarTheme.accentText("标 签")).growX().left();
-        head.add(new BarCloseButton().onClick(this::close)).size(18f);
-        add(head).growX().height(20f).row();
+        head.add(new BarCloseButton().onClick(this::close)).size(BarMetrics.icon());
+        add(head).growX().height(BarMetrics.settingsHeadH()).row();
 
-        add(new BarDivider()).growX().height(1f).padTop(2f).padBottom(3f).row();
+        add(new BarDivider()).growX().height(BarMetrics.hairline()).padTop(BarMetrics.sp2()).padBottom(BarMetrics.sp3()).row();
 
         list.top();
-        list.defaults().padBottom(2f);
-        scrollCell = add(new BarScroll(list)).growX().height(LIST_MIN);
+        list.defaults().padBottom(BarMetrics.sp2());
+        scrollCell = add(new BarScroll(list)).growX().height(BarMetrics.tagListMinH());
         scrollCell.row();
 
         Table btns = new Table();
-        btns.defaults().growX().height(24f).pad(2f);
+        btns.defaults().growX().height(BarMetrics.dialogBtnH()).pad(BarMetrics.sp2());
         btns.add(new BarButton("清除全部筛选").onClick(() -> {
             picker.clearTags();
             sync();
             picker.refreshFilters();
         }));
         btns.add(new BarButton("关闭").borderless(true).onClick(this::close));
-        add(btns).growX().padTop(2f).row();
+        add(btns).growX().padTop(BarMetrics.sp2()).row();
 
         rebuild();
     }
@@ -93,8 +90,8 @@ public class BarTagOverview extends BarWindow{
 
         List<String> tags = picker.allTags();
         if(tags.isEmpty()){
-            list.add(BarTheme.dimText("还没有任何标签")).growX().left().pad(6f).row();
-            list.add(BarTheme.dimText("在原版蓝图界面里给蓝图加标签")).growX().left().pad(0f, 6f, 6f, 6f).row();
+            list.add(BarTheme.dimText("还没有任何标签")).growX().left().pad(BarMetrics.sp6()).row();
+            list.add(BarTheme.dimText("在原版蓝图界面里给蓝图加标签")).growX().left().pad(0f, BarMetrics.sp6(), BarMetrics.sp6(), BarMetrics.sp6()).row();
         }else{
             for(String tag : tags){
                 BarTagRow row = new BarTagRow(tag, picker.countOf(tag));
@@ -103,17 +100,18 @@ public class BarTagOverview extends BarWindow{
                     picker.refreshFilters();
                     sync();
                 });
-                list.add(row).growX().height(ROW_H).row();
+                list.add(row).growX().height(BarMetrics.menuItemH()).row();
             }
         }
 
         sync();
 
         // 高度跟着内容走：标签少时不占一大片空白
-        float h = Mathf.clamp(tags.size() * (ROW_H + 2f), LIST_MIN, LIST_MAX);
+        float h = Mathf.clamp(tags.size() * (BarMetrics.menuItemH() + BarMetrics.sp2()),
+            BarMetrics.tagListMinH(), BarMetrics.tagListMaxH());
         scrollCell.height(h);
         invalidate();
-        setSize(WIDTH, getPrefHeight());
+        setSize(BarMetrics.tagOverviewW(), getPrefHeight());
         if(state.present) placeAt(anchorX, anchorY);
     }
 

@@ -23,11 +23,6 @@ import arc.scene.event.Touchable;
  */
 public class BarResizeGrip extends Element{
 
-    /** 命中正方形的边长（逻辑像素，实际用 BarTheme.d 换算）。 */
-    public static final float SIZE = 24f, SIZE_MOBILE = 30f;
-    /** 点阵每个点、点间距、距边距（逻辑像素）。 */
-    private static final float DOT = 2f, DOT_GAP = 3f, DOT_MARGIN = 4f;
-
     public interface Handler{
         /** 拖动过程中持续回调，参数已经夹在屏幕和最小尺寸之间。 */
         void resize(float w, float h);
@@ -54,7 +49,7 @@ public class BarResizeGrip extends Element{
         this.handler = handler;
 
         touchable = Touchable.enabled;
-        gripSize = BarTheme.d(SIZE, SIZE_MOBILE);
+        gripSize = BarMetrics.gripSize();
         setSize(gripSize, gripSize);
 
         addListener(new InputListener(){
@@ -118,10 +113,10 @@ public class BarResizeGrip extends Element{
 
         // 静态点阵：手机 3×3、桌面 4×4。点用实心方块画，2 逻辑像素在手机上约 4~5 物理像素，
         // 常态 0.75 的亮度在深色战场上也能一眼看到；只有按下时才更亮，悬停不做变化（静态按钮）。
-        int dots = BarTheme.mobile ? 3 : 4;
-        float dot = BarTheme.u(DOT);
-        float gap = BarTheme.u(DOT_GAP);
-        float margin = BarTheme.u(DOT_MARGIN);
+        int dots = BarMetrics.gripDots();
+        float dot = BarMetrics.gripDot();
+        float gap = BarMetrics.gripDotGap();
+        float margin = BarMetrics.gripDotMargin();
 
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, (dragging ? 1f : 0.75f) * a);
         for(int row = 0; row < dots; row++){

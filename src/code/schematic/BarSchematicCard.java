@@ -31,30 +31,13 @@ import mindustry.ui.dialogs.SchematicsDialog;
  */
 public class BarSchematicCard extends Table{
 
-    /** 卡片尺寸（逻辑像素，真正落地要过 {@link #w()}/{@link #h()}）。 */
-    public static final float W = 176f, H = 218f;
-
-    /**
-     * 手机尺寸：176 逻辑在 Scl≈1.9 的机器上是 334 像素，一张卡占掉近五分之一屏宽，
-     * 一屏只排得下两张，翻蓝图很累。缩到 124×160 后同宽能排 6 列。
-     */
-    private static final float W_MOBILE = 124f, H_MOBILE = 160f;
-
-    /** 卡片内边距（逻辑）。 */
-    private static final float PAD = 6f, PAD_MOBILE = 4f;
-    /** 预览图上方留白（逻辑）。 */
-    private static final float GAP = 2f;
-    /** 文字行高（逻辑）：手机字号没变小、只是列变窄，行高要留够，否则两行字会叠在一起。 */
-    private static final float NAME_H = 18f, META_H = 14f, TAGS_H = 13f;
-    private static final float NAME_H_MOBILE = 20f, META_H_MOBILE = 16f, TAGS_H_MOBILE = 14f;
-
-    /** 屏幕像素尺寸：网格排版和卡片自身必须用同一个值，所以集中在这里换算。 */
+    /** 屏幕像素尺寸：网格排版和卡片自身必须用同一个值，所以集中在这里换算；数值见 BarMetrics。 */
     public static float w(){
-        return BarTheme.u(BarTheme.mobile ? W_MOBILE : W);
+        return BarMetrics.cardW();
     }
 
     public static float h(){
-        return BarTheme.u(BarTheme.mobile ? H_MOBILE : H);
+        return BarMetrics.cardH();
     }
 
     private final Schematic schem;
@@ -84,13 +67,13 @@ public class BarSchematicCard extends Table{
         // 内容区宽度、各行高、预览高都按当前设备现算：写死常量的话手机卡片缩小后
         // 预览图还是 149 高，会把名字和标签顶到卡片外面
         float cw = w(), ch = h();
-        float pad = BarTheme.d(PAD, PAD_MOBILE);
-        float gap = BarTheme.u(GAP);
+        float pad = BarMetrics.cardPad();
+        float gap = BarMetrics.cardGap();
         float iw = cw - pad * 2f;
-        float nameH = BarTheme.d(NAME_H, NAME_H_MOBILE);
-        float metaH = BarTheme.d(META_H, META_H_MOBILE);
-        float tagsH = BarTheme.d(TAGS_H, TAGS_H_MOBILE);
-        float previewH = Math.max(BarTheme.u(48f), ch - pad * 2f - gap - nameH - metaH - tagsH);
+        float nameH = BarMetrics.cardNameH();
+        float metaH = BarMetrics.cardMetaH();
+        float tagsH = BarMetrics.cardTagsH();
+        float previewH = Math.max(BarMetrics.cardMinPreviewH(), ch - pad * 2f - gap - nameH - metaH - tagsH);
 
         margin(pad);
         defaults().pad(0f);

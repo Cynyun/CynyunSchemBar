@@ -20,10 +20,6 @@ import mindustry.Vars;
  */
 public class BarPrompt extends Table{
 
-    /** 逻辑单位（乘 Scl 后才是像素）。 */
-    public static final float WIDTH = 300f;
-    private static final float BTN_H = 24f, FIELD_H = 24f, PAD = 2f, MARGIN = 10f;
-
     private final BarTextField field;
     private final Cons<String> onOk;
 
@@ -54,27 +50,27 @@ public class BarPrompt extends Table{
         touchable = Touchable.enabled;
         setTransform(false);
 
-        margin(BarTheme.u(MARGIN));
+        margin(BarMetrics.dialogMargin());
         top();
 
         add(BarTheme.accentText(title)).growX().left().row();
-        add(new BarDivider()).growX().height(1f)
-            .padTop(BarTheme.u(4f)).padBottom(BarTheme.u(6f)).row();
+        add(new BarDivider()).growX().height(BarMetrics.hairline())
+            .padTop(BarMetrics.dialogSepTop()).padBottom(BarMetrics.dialogSepBottom()).row();
 
         field = new BarTextField(text, message, BarTextField.MAX_LENGTH);
         // 回车 = 确定：输入框会先收到字符，再走这里，所以文本已经是最新的
         field.field.setTextFieldListener((tf, c) -> {
             if(c == '\n' || c == '\r') confirm();
         });
-        add(field).growX().height(BarTheme.u(FIELD_H)).row();
+        add(field).growX().height(BarMetrics.dialogFieldH()).row();
 
         Table btns = new Table();
-        btns.defaults().growX().height(BarTheme.u(BTN_H)).pad(BarTheme.u(PAD));
+        btns.defaults().growX().height(BarMetrics.dialogBtnH()).pad(BarMetrics.sp2());
         btns.add(new BarButton("取消").onClick(this::close));
         btns.add(new BarButton("确定").accent(true).onClick(this::confirm));
-        add(btns).growX().padTop(BarTheme.u(MARGIN)).row();
+        add(btns).growX().padTop(BarMetrics.dialogBtnRowPad()).row();
 
-        setSize(BarTheme.u(WIDTH), getPrefHeight());
+        setSize(BarMetrics.dialogW(), getPrefHeight());
         show();
     }
 

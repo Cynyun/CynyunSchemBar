@@ -2,7 +2,6 @@ package code;
 
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
-import arc.graphics.g2d.Font;
 import arc.graphics.g2d.Fill;
 import arc.graphics.g2d.Lines;
 import arc.scene.ui.Label;
@@ -14,7 +13,8 @@ import mindustry.ui.Styles;
  *
  * 颜色在这里是“活”的：BarConfig 从 config.json 读到的值会写进这几个 Color 实例，
  * 设置窗里的取色器直接改实例本身，所以所有已经画出来的元素下一帧就是新颜色。
- * 以后要改整套观感（换色、换粗细、换角标长度）只动这个类。
+ * 以后要改整套观感（换色、换粗细、换角标长度）只动这个类；
+ * 尺寸（宽高、行高、边框、内边距、图标大小）一律不在这里，见 {@link BarMetrics}。
  */
 public final class BarTheme{
 
@@ -62,32 +62,6 @@ public final class BarTheme{
      */
     public static float d(float desktop, float mobileValue){
         return u(mobile ? mobileValue : desktop);
-    }
-
-    /** 图标按钮（× / ⚙ / 三条横线）的边长：手机 24，比 26 少占一点标题行，面板能再窄一档。 */
-    public static float icon(){
-        return u(mobile ? 24f : 18f);
-    }
-
-    private static float lineHeight = -1f;
-
-    /** 一行文字真正占的高度（屏幕像素；字体在加载时已被 Scl 放大）。 */
-    public static float lineH(){
-        if(lineHeight < 0f){
-            Font font = Styles.defaultLabel.font;
-            lineHeight = font != null ? font.getLineHeight() : u(16f);
-        }
-        return lineHeight;
-    }
-
-    /**
-     * 行高：至少放得下一行字 + 上下各 3 逻辑像素余量。
-     *
-     * 用户可以在设置里改「UI 缩放」，字体跟着变、布局常量不跟着变的话行会被裁掉，
-     * 所以文字行的实际高度一律取 max(设计值, 字高 + 余量)，而不是直接用设计值。
-     */
-    public static float rowH(float desktop, float mobileValue){
-        return Math.max(d(desktop, mobileValue), lineH() + u(6f));
     }
 
     /** 恢复出厂颜色，由 BarConfig.defaults() 调用。 */

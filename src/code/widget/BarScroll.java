@@ -16,21 +16,14 @@ import mindustry.ui.Styles;
  * 在右边缘画一条 1px 轨道 + 2px 强调色滑块。
  *
  * 两条硬约定（以后所有滚动区都靠它们，不要在调用处重复实现）：
- * 1. 内容区固定预留 {@link #BAR_WIDTH} 的右侧空间，滑块永远不会压住内容。
+ * 1. 内容区固定预留 {@link BarMetrics#scrollBarW()} 的右侧空间，滑块永远不会压住内容。
  * 2. 指针离开本区域时归还滚动焦点，否则 arc 的 ScrollPane 会把滚轮永久锁在自己身上。
  */
 public class BarScroll extends ScrollPane{
 
-    /** 滑块粗细（逻辑像素）。 */
-    public static final float THUMB = 2f;
-    /** 轨道中心离右边框的距离（逻辑像素）。 */
-    public static final float INSET = 3f;
-    /** 内容区必须为滚动条预留的宽度（逻辑像素）：滑块 2 + 轨道 1 + 两侧各约 1.5 的呼吸空间。 */
-    public static final float BAR_WIDTH = 6f;
-
-    /** 上面那些是逻辑像素，真正排版要用这个换算过的值。 */
+    /** 内容区为滚动条预留的宽度（屏幕像素）；具体数值见 {@link BarMetrics#scrollBarW()}。 */
     public static float barWidth(){
-        return BarTheme.u(BAR_WIDTH);
+        return BarMetrics.scrollBarW();
     }
 
     /** 是否横向滚动（标签行这种一排 chips 的用）。 */
@@ -81,12 +74,12 @@ public class BarScroll extends ScrollPane{
      */
     @Override
     public float getMinHeight(){
-        return BarTheme.u(16f);
+        return BarMetrics.scrollMinSize();
     }
 
     @Override
     public float getMinWidth(){
-        return BarTheme.u(16f);
+        return BarMetrics.scrollMinSize();
     }
 
     @Override
@@ -99,7 +92,7 @@ public class BarScroll extends ScrollPane{
         }
 
         // 内容没有溢出就不画滚动条，避免面板右边多出一条没意义的竖线
-        float inset = BarTheme.u(INSET), pad = BarTheme.u(4f);
+        float inset = BarMetrics.scrollInset(), pad = BarMetrics.scrollPad();
         if(getMaxY() <= 1f || width <= inset * 3f || height <= pad * 3f) return;
 
         float a = parentAlpha;
@@ -107,7 +100,7 @@ public class BarScroll extends ScrollPane{
         float bottom = y + pad;
         float top = y + height - pad;
         float trackH = top - bottom;
-        if(trackH <= BarTheme.u(8f)) return;
+        if(trackH <= BarMetrics.scrollMinThumb()) return;
 
         // 轨道
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, 0.12f * a);
@@ -117,12 +110,12 @@ public class BarScroll extends ScrollPane{
         // 滑块：高度按“可视高度 / 内容总高”缩放，最短 8px 保证能看见
         float content = height + getMaxY();
         float frac = content <= height ? 1f : Mathf.clamp(height / content, 0.08f, 1f);
-        float thumbH = Math.max(BarTheme.u(8f), trackH * frac);
+        float thumbH = Math.max(BarMetrics.scrollMinThumb(), trackH * frac);
         // 滚动百分比 0 = 顶部，屏幕坐标 y 向上，所以要 (1 - p)
         float thumbY = bottom + (trackH - thumbH) * (1f - getVisualScrollPercentY());
 
         Draw.color(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, 0.8f * a);
-        Lines.stroke(BarTheme.u(THUMB));
+        Lines.stroke(BarMetrics.scrollThumbW());
         Lines.line(trackX, thumbY, trackX, thumbY + thumbH);
 
         Draw.reset();
@@ -130,14 +123,14 @@ public class BarScroll extends ScrollPane{
 
     /** 横向滚动条：一条贴底的横线 + 强调色滑块。 */
     private void drawHorizontal(){
-        float inset = BarTheme.u(INSET), pad = BarTheme.u(4f);
+        float inset = BarMetrics.scrollInset(), pad = BarMetrics.scrollPad();
         if(getMaxX() <= 1f || height <= inset * 3f) return;
 
         float a = parentAlpha;
         float trackY = y + inset;
         float left = x + pad, right = x + width - pad;
         float trackW = right - left;
-        if(trackW <= BarTheme.u(8f)) return;
+        if(trackW <= BarMetrics.scrollMinThumb()) return;
 
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, 0.12f * a);
         Lines.stroke(1f);
@@ -145,11 +138,11 @@ public class BarScroll extends ScrollPane{
 
         float content = width + getMaxX();
         float frac = content <= width ? 1f : Mathf.clamp(width / content, 0.08f, 1f);
-        float thumbW = Math.max(BarTheme.u(8f), trackW * frac);
+        float thumbW = Math.max(BarMetrics.scrollMinThumb(), trackW * frac);
         float thumbX = left + (trackW - thumbW) * getVisualScrollPercentX();
 
         Draw.color(BarTheme.accent.r, BarTheme.accent.g, BarTheme.accent.b, 0.8f * a);
-        Lines.stroke(BarTheme.u(THUMB));
+        Lines.stroke(BarMetrics.scrollThumbW());
         Lines.line(thumbX, trackY, thumbX + thumbW, trackY);
 
         Draw.reset();

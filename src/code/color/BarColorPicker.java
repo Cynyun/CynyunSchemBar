@@ -20,11 +20,6 @@ import arc.scene.ui.layout.Table;
  */
 public class BarColorPicker extends BarWindow{
 
-    /** 逻辑单位（乘 Scl 后才是像素）。 */
-    public static final float WIDTH = 236f, HEIGHT = 216f;
-    /** 行高 / 色块边长 / 间距（逻辑单位）。 */
-    private static final float ROW_H = 18f, SWATCH = 18f, PAD = 2f, GAP = 8f;
-
     private static final String[] PRESETS = {
         "ffffff", "c8d0d4", "9fb0b6", "6b7378", "000000", "7fd7e8", "4aa6d8", "3f6ee0",
         "8a6cf0", "d573d8", "ef5f6b", "f08f4b", "f2c94c", "6fcf6f", "3fae8f", "b0793a"
@@ -39,25 +34,25 @@ public class BarColorPicker extends BarWindow{
     private int shown = Integer.MIN_VALUE;
 
     public BarColorPicker(BarColorField field){
-        super(BarTheme.u(WIDTH), BarTheme.u(HEIGHT));
+        super(BarMetrics.colorW(), BarMetrics.colorH());
         this.field = field;
         snapshot.set(field.color);
 
-        margin(BarTheme.u(GAP));
-        defaults().pad(BarTheme.u(PAD));
+        margin(BarMetrics.colorGap());
+        defaults().pad(BarMetrics.sp2());
         top();
 
         Table head = new Table();
         head.add(BarTheme.accentText("颜色 · " + field.title)).growX().left();
-        head.add(new BarCloseButton().onClick(this::confirm)).size(BarTheme.u(ROW_H));
-        add(head).growX().height(BarTheme.u(ROW_H)).row();
+        head.add(new BarCloseButton().onClick(this::confirm)).size(BarMetrics.colorRowH());
+        add(head).growX().height(BarMetrics.colorRowH()).row();
 
-        add(new BarDivider()).growX().height(1f)
-            .padTop(BarTheme.u(3f)).padBottom(BarTheme.u(4f)).row();
+        add(new BarDivider()).growX().height(BarMetrics.hairline())
+            .padTop(BarMetrics.sp3()).padBottom(BarMetrics.sp4()).row();
 
         // 2 行 x 8 个预设色块
         Table presets = new Table();
-        presets.defaults().size(BarTheme.u(SWATCH)).pad(BarTheme.u(PAD));
+        presets.defaults().size(BarMetrics.colorSwatch()).pad(BarMetrics.sp2());
         for(int i = 0; i < PRESETS.length; i++){
             final Color c = Color.valueOf(PRESETS[i]);
             BarSwatch sw = new BarSwatch(c);
@@ -69,11 +64,11 @@ public class BarColorPicker extends BarWindow{
         add(presets).row();
 
         Table cur = new Table();
-        cur.add(new BarSwatch(field.color)).size(BarTheme.u(SWATCH)).padRight(BarTheme.u(6f));
+        cur.add(new BarSwatch(field.color)).size(BarMetrics.colorSwatch()).padRight(BarMetrics.sp6());
         hexLabel = BarTheme.text("");
         hexLabel.touchable = Touchable.disabled;
         cur.add(hexLabel).left().growX();
-        add(cur).growX().height(BarTheme.u(ROW_H)).padTop(BarTheme.u(3f)).row();
+        add(cur).growX().height(BarMetrics.colorRowH()).padTop(BarMetrics.colorCurrentPadTop()).row();
 
         for(int i = 0; i < 3; i++){
             final int ch = i;
@@ -88,21 +83,21 @@ public class BarColorPicker extends BarWindow{
             values[i] = value;
 
             Table row = new Table();
-            row.add(BarTheme.dimText(name)).width(BarTheme.u(16f)).left();
-            row.add(s).growX().height(BarTheme.u(16f))
-                .padLeft(BarTheme.u(PAD)).padRight(BarTheme.u(6f));
-            row.add(value).width(BarTheme.u(30f)).right();
-            add(row).growX().height(BarTheme.u(ROW_H)).row();
+            row.add(BarTheme.dimText(name)).width(BarMetrics.colorNameW()).left();
+            row.add(s).growX().height(BarMetrics.colorSliderH())
+                .padLeft(BarMetrics.sp2()).padRight(BarMetrics.sp6());
+            row.add(value).width(BarMetrics.colorValueW()).right();
+            add(row).growX().height(BarMetrics.colorRowH()).row();
         }
 
         Table btns = new Table();
-        btns.defaults().growX().height(BarTheme.u(22f)).pad(BarTheme.u(PAD));
+        btns.defaults().growX().height(BarMetrics.colorBtnH()).pad(BarMetrics.sp2());
         btns.add(new BarButton("取消").onClick(this::cancel));
         btns.add(new BarButton("确定").accent(true).onClick(this::confirm));
-        add(btns).growX().padTop(BarTheme.u(4f)).row();
+        add(btns).growX().padTop(BarMetrics.sp4()).row();
 
         // 高度取表格自己的 pref（同设置窗：手写常量会漏掉每行 pad）
-        setSize(BarTheme.u(WIDTH), getPrefHeight());
+        setSize(BarMetrics.colorW(), getPrefHeight());
 
         syncSliders();
     }
@@ -119,7 +114,7 @@ public class BarColorPicker extends BarWindow{
         if(field != null && field.parent != null){
             Vec2 p = field.localToStageCoordinates(new Vec2());
             // 默认贴在字段右侧 8px，顶部对齐；右边放不下就翻到左侧
-            float gap = BarTheme.u(GAP);
+            float gap = BarMetrics.colorPickerGap();
             sx = p.x + field.getWidth() + gap;
             sy = p.y + field.getHeight() - height;
             if(sx + width > Core.graphics.getWidth()) sx = p.x - width - gap;

@@ -20,9 +20,6 @@ import arc.scene.ui.layout.Table;
  */
 public abstract class BarWindow extends Table{
 
-    /** 吸附阈值：松手时离边界 <= 这个距离就贴边，目标 0 像素（真贴边，不留缝）。 */
-    public static final float SNAP = 10f;
-
     private boolean dragging;
     private float dragLastX, dragLastY;
 
@@ -234,7 +231,7 @@ public abstract class BarWindow extends Table{
         st.uy = availH > 0f ? Mathf.clamp(y / availH, 0f, 1f) : 0f;
 
         // 阈值也跟着 Scl 走：手机上 10 物理像素太窄，手指根本贴不准
-        float snap = BarTheme.u(SNAP);
+        float snap = BarMetrics.snap();
         st.anchorX = x <= snap ? -1 : x >= availW - snap ? 1 : 0;
         st.anchorY = y <= snap ? -1 : y >= availH - snap ? 1 : 0;
         st.present = true;

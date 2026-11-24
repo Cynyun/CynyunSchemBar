@@ -33,11 +33,6 @@ import java.util.regex.Pattern;
  */
 public class BarSchematicPicker extends BarWindow{
 
-    /** 默认/最小尺寸，都是逻辑像素（真实施加前要过 BarTheme.u）。 */
-    public static final float DEFAULT_W = 760f, DEFAULT_H = 540f;
-    public static final float MIN_W = 400f, MIN_H = 280f;
-    public static final float CARD_PAD = 4f;
-
     /** 原版过滤标点的方式：先去掉符号再比名字，避免 “wall-1” 搜不到 “wall1”。 */
     private static final Pattern ignoreSymbols = Pattern.compile("[`~!@#$%^&*()\\-_=+{}|;:'\",<.>/?]");
     /** 悬停多久出详情、移开多久收起。短一点才跟手，长了像“没反应”。 */
@@ -70,15 +65,11 @@ public class BarSchematicPicker extends BarWindow{
      * 被夹成整屏后标题/搜索/标签/网格全挤在一起，所以按屏占比算。
      */
     private static float defaultW(){
-        return BarTheme.mobile
-            ? Math.min(BarTheme.u(DEFAULT_W), Core.graphics.getWidth() * 0.8f)
-            : BarTheme.u(DEFAULT_W);
+        return BarMetrics.pickerDefaultW(Core.graphics.getWidth());
     }
 
     private static float defaultH(){
-        return BarTheme.mobile
-            ? Math.min(BarTheme.u(DEFAULT_H), Core.graphics.getHeight() * 0.8f)
-            : BarTheme.u(DEFAULT_H);
+        return BarMetrics.pickerDefaultH(Core.graphics.getHeight());
     }
 
     /** 存档里的尺寸（逻辑单位，按设备分两套）；没存过（0）就用默认值。这里顺手换成屏幕像素。 */
@@ -94,23 +85,19 @@ public class BarSchematicPicker extends BarWindow{
 
     /** 最小尺寸也要夹进画布：手机上逻辑 400 宽换算过来可能已经超过半屏。 */
     private static float minW(){
-        float w = BarTheme.u(BarTheme.mobile ? 320f : MIN_W);
-        float sw = Core.graphics.getWidth();
-        return sw > 0f ? Math.min(w, sw) : w;
+        return BarMetrics.pickerMinW(Core.graphics.getWidth());
     }
 
     private static float minH(){
-        float h = BarTheme.u(BarTheme.mobile ? 240f : MIN_H);
-        float sh = Core.graphics.getHeight();
-        return sh > 0f ? Math.min(h, sh) : h;
+        return BarMetrics.pickerMinH(Core.graphics.getHeight());
     }
 
     public BarSchematicPicker(BarPickerHost host){
         super(storedW(), storedH());
         this.host = host;
 
-        margin(BarTheme.d(8f, 6f));
-        defaults().pad(BarTheme.u(2f));
+        margin(BarMetrics.pickerMargin());
+        defaults().pad(BarMetrics.sp2());
         top();
 
         // ---------------------------------------------------------------- 标题
@@ -118,34 +105,33 @@ public class BarSchematicPicker extends BarWindow{
         head.add(BarTheme.accentText("选 择 蓝 图")).growX().left().minWidth(0f);
         countLabel = BarTheme.dimText("");
         countLabel.touchable = Touchable.disabled;
-        head.add(countLabel).right().padRight(BarTheme.u(10f));
-        head.add(new BarCloseButton().onClick(this::close)).size(BarTheme.icon());
-        add(head).growX()
-            .height(Math.max(BarTheme.rowH(22f, 22f), BarTheme.icon() + BarTheme.u(4f))).row();
+        head.add(countLabel).right().padRight(BarMetrics.pickerCountPad());
+        head.add(new BarCloseButton().onClick(this::close)).size(BarMetrics.icon());
+        add(head).growX().height(BarMetrics.pickerTitleH()).row();
 
-        add(new BarDivider()).growX().height(1f).padTop(BarTheme.u(2f)).padBottom(BarTheme.u(4f)).row();
+        add(new BarDivider()).growX().height(BarMetrics.hairline()).padTop(BarMetrics.sp2()).padBottom(BarMetrics.sp4()).row();
 
         // ---------------------------------------------------------------- 搜索行
         Table srow = new Table();
 
         search = new BarTextField(sessionSearch, "搜索蓝图名", BarTextField.MAX_LENGTH);
-        srow.add(search).growX().height(BarTheme.rowH(24f, 26f));
+        srow.add(search).growX().height(BarMetrics.pickerSearchFieldH());
 
         // 三条横线自己画：原版 Icon.list 是贴图，设置里换色时不会跟着变
-        float icon = BarTheme.icon();
-        srow.add(new BarMenuButton(icon).onClick(this::openVanilla)).size(icon).padLeft(BarTheme.u(4f));
-        add(srow).growX().height(Math.max(BarTheme.rowH(26f, 28f), icon + BarTheme.u(4f))).row();
+        float icon = BarMetrics.icon();
+        srow.add(new BarMenuButton(icon).onClick(this::openVanilla)).size(icon).padLeft(BarMetrics.sp4());
+        add(srow).growX().height(BarMetrics.pickerSearchRowH()).row();
 
         // ---------------------------------------------------------------- 标签行
         chips.left();
-        chips.defaults().padRight(BarTheme.u(4f));
-        add(new BarScroll(chips, true)).growX().height(BarTheme.rowH(26f, 26f)).row();
+        chips.defaults().padRight(BarMetrics.pickerChipGap());
+        add(new BarScroll(chips, true)).growX().height(BarMetrics.pickerChipsRowH()).row();
 
         // ---------------------------------------------------------------- 卡片网格
         // Table 不会自己换行：它的列是逐格 add 出来的，放在 ScrollPane 里宽度还会取“一整行的
         // pref”，所以必须按窗口宽度自己算列数、拆行（原版蓝图界面也是这么做的）。
         grid.top();
-        grid.defaults().pad(BarTheme.u(CARD_PAD));
+        grid.defaults().pad(BarMetrics.pickerCardPad());
         add(new BarScroll(grid)).grow().row();
 
         // 手机没有“悬停”，对应的入口是长按（BarSchematicCard/BarEntryButton 里的 0.5s 计时）
@@ -154,7 +140,7 @@ public class BarSchematicPicker extends BarWindow{
             : "点卡片绑定 · 悬停看详情 · 拖右下角缩放");
         hint.touchable = Touchable.disabled;
         hint.setEllipsis(true);
-        add(hint).growX().height(BarTheme.rowH(16f, 18f)).minWidth(0f).row();
+        add(hint).growX().height(BarMetrics.pickerHintH()).minWidth(0f).row();
 
         rebuildChips();
         rebuildCards();
@@ -185,7 +171,7 @@ public class BarSchematicPicker extends BarWindow{
     /** 当前宽度下能排几列。滚动条宽度由 BarScroll 预留，这里要一起减掉。 */
     private int columnsFor(){
         float avail = getWidth() - getMarginLeft() - getMarginRight() - BarScroll.barWidth();
-        return Math.max(1, (int)Math.floor(avail / (BarSchematicCard.w() + BarTheme.u(CARD_PAD) * 2f)));
+        return Math.max(1, (int)Math.floor(avail / (BarSchematicCard.w() + BarMetrics.pickerCardPad() * 2f)));
     }
 
     @Override
@@ -346,7 +332,7 @@ public class BarSchematicPicker extends BarWindow{
 
         if(list.isEmpty()){
             grid.add(BarTheme.dimText(shownLibrary == 0 ? "蓝图库是空的：先用原版蓝图界面做一张" : "没有符合条件的蓝图"))
-                .growX().pad(BarTheme.u(24f)).row();
+                .growX().pad(BarMetrics.pickerEmptyPad()).row();
             return;
         }
 
@@ -393,7 +379,7 @@ public class BarSchematicPicker extends BarWindow{
             clearTags();
             refreshFilters();
         });
-        chips.add(allChip).height(BarTheme.u(20f)).padRight(BarTheme.u(4f));
+        chips.add(allChip).height(BarMetrics.pickerChipH()).padRight(BarMetrics.pickerChipGap());
 
         for(String tag : tags){
             BarButton b = new BarButton(tag + " " + countOf(tag)).borderless(true).stateful(true);
@@ -402,7 +388,7 @@ public class BarSchematicPicker extends BarWindow{
                 toggleTag(tag);
                 refreshFilters();
             });
-            chips.add(b).height(BarTheme.u(20f)).padRight(BarTheme.u(4f));
+            chips.add(b).height(BarMetrics.pickerChipH()).padRight(BarMetrics.pickerChipGap());
         }
 
     }
@@ -438,7 +424,7 @@ public class BarSchematicPicker extends BarWindow{
         Vec2 v = card.localToStageCoordinates(new Vec2(0f, 0f));
         Vars.ui.hudGroup.stageToLocalCoordinates(v);
 
-        float w = popup.getWidth(), h = popup.getHeight(), gap = BarTheme.u(8f);
+        float w = popup.getWidth(), h = popup.getHeight(), gap = BarMetrics.pickerPopupGap();
         float px = v.x + card.getWidth() + gap;
         if(px + w > Core.graphics.getWidth()) px = Math.max(0f, v.x - w - gap);
         float py = v.y + card.getHeight() - h;
