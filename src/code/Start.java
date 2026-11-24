@@ -22,7 +22,10 @@ public class Start{
     /** 只能调一次：重复调用会重复注册 ClientLoadEvent。 */
     public static void init(){
         Events.on(ClientLoadEvent.class, e -> {
-            // 先读配置：颜色要在任何界面创建之前就位
+            // 设备判定必须早于任何窗口构造：所有尺寸都按 BarTheme.mobile 取双值
+            BarTheme.mobile = Vars.mobile;
+
+            // 再读配置：颜色要在任何界面创建之前就位
             BarConfig.load();
 
             if(Vars.ui == null || Vars.ui.hudGroup == null) return;
@@ -34,8 +37,8 @@ public class Start{
             panel.toFront();
 
             // 手机端排查用：单位是屏幕像素，u(1)=Scl.scl(1) 就是“一个逻辑像素有多大”
-            Log.info("[schembar] scl=@ screen=@x@ panel=@x@",
-                BarTheme.u(1f), Core.graphics.getWidth(), Core.graphics.getHeight(),
+            Log.info("[schembar] mobile=@ scl=@ screen=@x@ panel=@x@",
+                BarTheme.mobile, BarTheme.u(1f), Core.graphics.getWidth(), Core.graphics.getHeight(),
                 panel.getWidth(), panel.getHeight());
 
             // 窗口尺寸变化：贴边的继续贴边，自由态的按比例跟随。用 Core.graphics 而不是

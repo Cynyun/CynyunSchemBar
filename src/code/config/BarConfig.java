@@ -32,16 +32,31 @@ public final class BarConfig{
     public static final WindowState mainWindow = new WindowState(), settingsWindow = new WindowState(), pickerWindow = new WindowState();
 
     /**
-     * 蓝图选择窗的尺寸。0 = 还没存过，用 BarSchematicPicker 的默认值。
-     * 位置走上面的 pickerWindow，尺寸只有这一个窗口能改，所以单独放两个字段。
+     * 窗口尺寸。单位是**逻辑像素**（乘 Scl 才是屏幕像素），0 = 还没存过，用窗口自己的默认值。
+     *
+     * 桌面与手机分成两套：手机上调到合适的尺寸写进 mobile 那组，回 PC 不会把桌面布局顶乱。
+     * 位置不分组——{@link WindowState} 本来就是贴边锚点 + 比例，跨分辨率天然成立。
      */
-    public static float pickerWidth, pickerHeight;
+    public static float pickerWidth, pickerHeight, pickerWidthMobile, pickerHeightMobile;
+    public static float mainWidth, mainHeight, mainWidthMobile, mainHeightMobile;
 
-    /**
-     * 主面板的尺寸，单位是**逻辑像素**（乘 Scl 才是屏幕像素）。
-     * 0 = 还没拖过，用 BarPanel 的默认值。位置仍走 mainWindow。
-     */
-    public static float mainWidth, mainHeight;
+    /** 当前设备的主面板尺寸（逻辑像素）；0 = 没存过。 */
+    public static float mainW(){
+        return BarTheme.mobile ? mainWidthMobile : mainWidth;
+    }
+
+    public static float mainH(){
+        return BarTheme.mobile ? mainHeightMobile : mainHeight;
+    }
+
+    /** 当前设备的选择窗尺寸（逻辑像素）；0 = 没存过。 */
+    public static float pickerW(){
+        return BarTheme.mobile ? pickerWidthMobile : pickerWidth;
+    }
+
+    public static float pickerH(){
+        return BarTheme.mobile ? pickerHeightMobile : pickerHeight;
+    }
 
     /**
      * 槽位绑定的蓝图：存文件名（不含扩展名），重启后在 {@code Vars.schematics.all()} 里按名找回。
@@ -107,6 +122,9 @@ public final class BarConfig{
                     if(main != null){
                         mainWidth = Math.max(0f, main.getFloat("w", 0f));
                         mainHeight = Math.max(0f, main.getFloat("h", 0f));
+                        // 老配置没有 wm/hm：手机端读不到就回落到默认尺寸
+                        mainWidthMobile = Math.max(0f, main.getFloat("wm", 0f));
+                        mainHeightMobile = Math.max(0f, main.getFloat("hm", 0f));
                     }
                     readWindow(w.get("settings"), settingsWindow);
 
@@ -116,6 +134,8 @@ public final class BarConfig{
                         // 0 / 负数视为没存过，交给窗口用默认尺寸
                         pickerWidth = Math.max(0f, picker.getFloat("w", 0f));
                         pickerHeight = Math.max(0f, picker.getFloat("h", 0f));
+                        pickerWidthMobile = Math.max(0f, picker.getFloat("wm", 0f));
+                        pickerHeightMobile = Math.max(0f, picker.getFloat("hm", 0f));
                     }
                 }
             }
@@ -235,6 +255,8 @@ public final class BarConfig{
             Jval main = writeWindow(mainWindow);
             if(mainWidth > 0f) main.put("w", (double)mainWidth);
             if(mainHeight > 0f) main.put("h", (double)mainHeight);
+            if(mainWidthMobile > 0f) main.put("wm", (double)mainWidthMobile);
+            if(mainHeightMobile > 0f) main.put("hm", (double)mainHeightMobile);
             w.put("main", main);
             w.put("settings", writeWindow(settingsWindow));
 
@@ -242,6 +264,8 @@ public final class BarConfig{
             Jval picker = writeWindow(pickerWindow);
             if(pickerWidth > 0f) picker.put("w", (double)pickerWidth);
             if(pickerHeight > 0f) picker.put("h", (double)pickerHeight);
+            if(pickerWidthMobile > 0f) picker.put("wm", (double)pickerWidthMobile);
+            if(pickerHeightMobile > 0f) picker.put("hm", (double)pickerHeightMobile);
             w.put("picker", picker);
 
             s.put("windows", w);
@@ -345,8 +369,12 @@ public final class BarConfig{
         resetWindow(pickerWindow);
         pickerWidth = 0f;
         pickerHeight = 0f;
+        pickerWidthMobile = 0f;
+        pickerHeightMobile = 0f;
         mainWidth = 0f;
         mainHeight = 0f;
+        mainWidthMobile = 0f;
+        mainHeightMobile = 0f;
     }
 
     private static void resetWindow(WindowState st){

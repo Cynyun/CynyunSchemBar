@@ -49,6 +49,8 @@ public class BarEntryButton extends BarButton{
         entry.schematic = schematic;
 
         ellipsis(true);
+        // 无边框样式：一列条目紧贴成一条列表，没有四角括号，靠悬停淡底提示指针位置
+        borderless(true);
         onClick(this::clicked);
 
         // 只跟踪“手指按在按钮上”这一件事：鼠标悬停改成每帧读 isOver()，见 act()

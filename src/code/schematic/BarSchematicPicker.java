@@ -27,7 +27,8 @@ import java.util.regex.Pattern;
  *
  * 状态存在哪：
  *   - 窗口位置 → BarConfig.pickerWindow（贴边/比例两轴，和主面板、设置窗同一套）
- *   - 窗口尺寸 → BarConfig.pickerWidth / pickerHeight（拖右下角松手时落盘）
+ *   - 窗口尺寸 → BarConfig.pickerWidth / pickerHeight（桌面）与 pickerWidthMobile / pickerHeightMobile（手机），
+ *     拖右下角松手时按当前设备落盘
  *   - 搜索词、选中的标签 → static 字段（只在本次运行内有效，重启即丢）
  */
 public class BarSchematicPicker extends BarWindow{
@@ -64,24 +65,42 @@ public class BarSchematicPicker extends BarWindow{
     /** 当前网格排了几列。列数变了才重建卡片，拖动缩放时不至于每像素重建一次。 */
     private int columns = -1;
 
-    /** 存档里的尺寸（逻辑单位）；没存过（0）就用默认值。这里顺手换成屏幕像素。 */
+    /**
+     * 默认尺寸：桌面上 760×540 逻辑；手机上这两个值会超过逻辑屏高（该机只有 500~640），
+     * 被夹成整屏后标题/搜索/标签/网格全挤在一起，所以按屏占比算。
+     */
+    private static float defaultW(){
+        return BarTheme.mobile
+            ? Math.min(BarTheme.u(DEFAULT_W), Core.graphics.getWidth() * 0.8f)
+            : BarTheme.u(DEFAULT_W);
+    }
+
+    private static float defaultH(){
+        return BarTheme.mobile
+            ? Math.min(BarTheme.u(DEFAULT_H), Core.graphics.getHeight() * 0.8f)
+            : BarTheme.u(DEFAULT_H);
+    }
+
+    /** 存档里的尺寸（逻辑单位，按设备分两套）；没存过（0）就用默认值。这里顺手换成屏幕像素。 */
     private static float storedW(){
-        return BarTheme.u(BarConfig.pickerWidth > 0f ? BarConfig.pickerWidth : DEFAULT_W);
+        float v = BarConfig.pickerW();
+        return v > 0f ? BarTheme.u(v) : defaultW();
     }
 
     private static float storedH(){
-        return BarTheme.u(BarConfig.pickerHeight > 0f ? BarConfig.pickerHeight : DEFAULT_H);
+        float v = BarConfig.pickerH();
+        return v > 0f ? BarTheme.u(v) : defaultH();
     }
 
     /** 最小尺寸也要夹进画布：手机上逻辑 400 宽换算过来可能已经超过半屏。 */
     private static float minW(){
-        float w = BarTheme.u(MIN_W);
+        float w = BarTheme.u(BarTheme.mobile ? 320f : MIN_W);
         float sw = Core.graphics.getWidth();
         return sw > 0f ? Math.min(w, sw) : w;
     }
 
     private static float minH(){
-        float h = BarTheme.u(MIN_H);
+        float h = BarTheme.u(BarTheme.mobile ? 240f : MIN_H);
         float sh = Core.graphics.getHeight();
         return sh > 0f ? Math.min(h, sh) : h;
     }
@@ -90,7 +109,7 @@ public class BarSchematicPicker extends BarWindow{
         super(storedW(), storedH());
         this.host = host;
 
-        margin(BarTheme.u(8f));
+        margin(BarTheme.d(8f, 6f));
         defaults().pad(BarTheme.u(2f));
         top();
 
@@ -100,8 +119,9 @@ public class BarSchematicPicker extends BarWindow{
         countLabel = BarTheme.dimText("");
         countLabel.touchable = Touchable.disabled;
         head.add(countLabel).right().padRight(BarTheme.u(10f));
-        head.add(new BarCloseButton().onClick(this::close)).size(BarTheme.u(18f));
-        add(head).growX().height(BarTheme.u(22f)).row();
+        head.add(new BarCloseButton().onClick(this::close)).size(BarTheme.icon());
+        add(head).growX()
+            .height(Math.max(BarTheme.rowH(22f, 22f), BarTheme.icon() + BarTheme.u(4f))).row();
 
         add(new BarDivider()).growX().height(1f).padTop(BarTheme.u(2f)).padBottom(BarTheme.u(4f)).row();
 
@@ -109,17 +129,17 @@ public class BarSchematicPicker extends BarWindow{
         Table srow = new Table();
 
         search = new BarTextField(sessionSearch, "搜索蓝图名", BarTextField.MAX_LENGTH);
-        srow.add(search).growX().height(BarTheme.u(24f));
+        srow.add(search).growX().height(BarTheme.rowH(24f, 26f));
 
         // 三条横线自己画：原版 Icon.list 是贴图，设置里换色时不会跟着变
-        float icon = BarTheme.u(18f);
+        float icon = BarTheme.icon();
         srow.add(new BarMenuButton(icon).onClick(this::openVanilla)).size(icon).padLeft(BarTheme.u(4f));
-        add(srow).growX().height(BarTheme.u(26f)).row();
+        add(srow).growX().height(Math.max(BarTheme.rowH(26f, 28f), icon + BarTheme.u(4f))).row();
 
         // ---------------------------------------------------------------- 标签行
         chips.left();
         chips.defaults().padRight(BarTheme.u(4f));
-        add(new BarScroll(chips, true)).growX().height(BarTheme.u(26f)).row();
+        add(new BarScroll(chips, true)).growX().height(BarTheme.rowH(26f, 26f)).row();
 
         // ---------------------------------------------------------------- 卡片网格
         // Table 不会自己换行：它的列是逐格 add 出来的，放在 ScrollPane 里宽度还会取“一整行的
@@ -128,10 +148,13 @@ public class BarSchematicPicker extends BarWindow{
         grid.defaults().pad(BarTheme.u(CARD_PAD));
         add(new BarScroll(grid)).grow().row();
 
-        hint = BarTheme.dimText("点卡片绑定 · 悬停看详情 · 拖右下角缩放");
+        // 手机没有“悬停”，对应的入口是长按（BarSchematicCard/BarEntryButton 里的 0.5s 计时）
+        hint = BarTheme.dimText(BarTheme.mobile
+            ? "点卡片绑定 · 长按看详情 · 拖右下角缩放"
+            : "点卡片绑定 · 悬停看详情 · 拖右下角缩放");
         hint.touchable = Touchable.disabled;
         hint.setEllipsis(true);
-        add(hint).growX().height(BarTheme.u(16f)).minWidth(0f).row();
+        add(hint).growX().height(BarTheme.rowH(16f, 18f)).minWidth(0f).row();
 
         rebuildChips();
         rebuildCards();
@@ -200,8 +223,14 @@ public class BarSchematicPicker extends BarWindow{
     /** 松手才落盘：尺寸按逻辑单位存，换屏幕/换 UI 缩放后仍然合适。 */
     @Override
     protected void onResizeEnd(){
-        BarConfig.pickerWidth = getWidth() / BarTheme.u(1f);
-        BarConfig.pickerHeight = getHeight() / BarTheme.u(1f);
+        float lw = getWidth() / BarTheme.u(1f), lh = getHeight() / BarTheme.u(1f);
+        if(BarTheme.mobile){
+            BarConfig.pickerWidthMobile = lw;
+            BarConfig.pickerHeightMobile = lh;
+        }else{
+            BarConfig.pickerWidth = lw;
+            BarConfig.pickerHeight = lh;
+        }
         BarConfig.save();
     }
 
@@ -210,7 +239,15 @@ public class BarSchematicPicker extends BarWindow{
     public void resetToDefault(){
         BarConfig.pickerWidth = 0f;
         BarConfig.pickerHeight = 0f;
+        BarConfig.pickerWidthMobile = 0f;
+        BarConfig.pickerHeightMobile = 0f;
         super.resetToDefault();
+    }
+
+    /** 选择窗是临时窗：开着的时候常驻面板拖不动自己的层级，不能把它盖住。 */
+    @Override
+    protected boolean transientWindow(){
+        return true;
     }
 
     // ------------------------------------------------------------------ 数据

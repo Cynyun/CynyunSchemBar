@@ -136,8 +136,9 @@ public abstract class BarWindow extends Table{
                 if(pointer != 0 || button != KeyCode.mouseLeft) return false;
                 if(isInteractive(event.targetActor)) return false;
 
-                // 点击后的 ui 位于上方
-                toFront();
+                // 点击后的 ui 位于上方；但临时窗（选择蓝图、详情、设置）开着时，
+                // 常驻面板去置顶就会盖住它——这正是手机上“选择窗被主面板压住”的成因
+                if(!transientAbove()) toFront();
 
                 // 用 stage 坐标的“增量”移动，不去换算父坐标：hudGroup 若带缩放/偏移，增量依然成立
                 dragging = true;
@@ -162,6 +163,20 @@ public abstract class BarWindow extends Table{
                 captureAnchor(true);
             }
         });
+    }
+
+    /** 临时窗：打开期间必须压在常驻窗口上面。子类覆盖为 true。 */
+    protected boolean transientWindow(){
+        return false;
+    }
+
+    /** 同级里有没有开着的临时窗（自己不算）。只有几个子元素，逐个比一遍比维护层级表可靠。 */
+    private boolean transientAbove(){
+        if(parent == null) return false;
+        for(Element e : parent.getChildren()){
+            if(e != this && e instanceof BarWindow && ((BarWindow)e).transientWindow()) return true;
+        }
+        return false;
     }
 
     /** 命中的元素只要在交互件里（含其子元素），就不触发拖动。 */

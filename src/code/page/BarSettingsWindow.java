@@ -42,7 +42,7 @@ public class BarSettingsWindow extends BarWindow{
         Table head = new Table();
         head.add(BarTheme.accentText("设 置")).growX().left();
         head.add(new BarCloseButton().onClick(Start::closeSettings)).size(BarTheme.u(18f));
-        add(head).growX().height(BarTheme.u(HEAD_H)).row();
+        add(head).growX().height(BarTheme.rowH(HEAD_H, HEAD_H)).row();
 
         add(new BarDivider()).growX().height(1f)
             .padTop(BarTheme.u(3f)).padBottom(BarTheme.u(4f)).row();
@@ -68,11 +68,11 @@ public class BarSettingsWindow extends BarWindow{
         op.add(opacitySlider).growX().height(BarTheme.u(16f))
             .padLeft(BarTheme.u(PAD)).padRight(BarTheme.u(6f));
         op.add(opacityValue).width(BarTheme.u(34f)).right();
-        add(op).growX().height(BarTheme.u(ROW_H)).row();
+        add(op).growX().height(BarTheme.rowH(ROW_H, 22f)).row();
 
         // ---------------------------------------------------------------- 底部按钮
         Table btns = new Table();
-        btns.defaults().growX().height(BarTheme.u(BTN_H)).pad(BarTheme.u(PAD));
+        btns.defaults().growX().height(BarTheme.rowH(BTN_H, 28f)).pad(BarTheme.u(PAD));
         resetBtn = new BarButton("恢复默认").onClick(this::onReset);
         btns.add(resetBtn);
         btns.add(new BarButton("关闭").accent(true).onClick(Start::closeSettings));
@@ -96,6 +96,12 @@ public class BarSettingsWindow extends BarWindow{
         setPosition(Mathf.round(Math.max(0f, (w - width) / 2f)), Mathf.round(Math.max(0f, (h - height) / 2f)));
     }
 
+    /** 设置窗也是临时窗：开着的时候常驻面板不能盖住它（手机屏小，一盖就点不到）。 */
+    @Override
+    protected boolean transientWindow(){
+        return true;
+    }
+
     /** 一行颜色字段：左侧固定宽度的名字，右侧可点击的色块 + hex。 */
     private void colorRow(String title, Color color){
         BarColorField field = new BarColorField(title, color);
@@ -103,8 +109,8 @@ public class BarSettingsWindow extends BarWindow{
 
         Table row = new Table();
         row.add(BarTheme.dimText(title)).width(BarTheme.u(NAME_W)).left();
-        row.add(field).growX().height(BarTheme.u(ROW_H)).padLeft(BarTheme.u(PAD));
-        add(row).growX().height(BarTheme.u(ROW_H)).row();
+        row.add(field).growX().height(BarTheme.rowH(ROW_H, 22f)).padLeft(BarTheme.u(PAD));
+        add(row).growX().height(BarTheme.rowH(ROW_H, 22f)).row();
     }
 
     @Override

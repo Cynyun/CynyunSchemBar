@@ -130,6 +130,12 @@ public class BarColorPicker extends BarWindow{
         setPosition(Mathf.round(Mathf.clamp(sx, 0f, maxX)), Mathf.round(Mathf.clamp(sy, 0f, maxY)));
     }
 
+    /** 取色器是临时窗：开着的时候常驻面板不能盖住它。 */
+    @Override
+    protected boolean transientWindow(){
+        return true;
+    }
+
     @Override
     public void act(float delta){
         super.act(delta);
