@@ -1,34 +1,78 @@
 name: Release Mod
 
+# 每次 push 到 main 都会构建并发布一个 release：
+#   首次是 v1.0.0，之后每次把末尾数字加一（v1.0.1、v1.0.2 …）。
+# 版本号不写死在仓库里，而是看已有的 v1.0.* tag：取最大的 patch 加一，一个 tag 都没有时从 0 开始，
+# 所以 tag 是唯一的版本来源，删掉某个 tag 就会重新用到那个号。
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
 
 permissions:
   contents: write
 
+# 同一个分支的两次 push 排队执行，避免它们同时算出同一个版本号
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  buildJar:
+  release:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v7
+      with:
+        # 需要拿到全部 tag，否则推算版本号时看不见历史发布
+        fetch-depth: 0
+
+    - name: Compute version
+      id: version
+      run: |
+        set -euo pipefail
+        git fetch --tags --force
+        latest=$(git tag --list 'v1.0.*' | sed 's/^v1\.0\.//' | grep -E '^[0-9]+$' | sort -n | tail -1 || true)
+        if [ -z "$latest" ]; then
+          patch=0
+        else
+          patch=$((latest + 1))
+        fi
+        version="1.0.$patch"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "tag=v$version" >> "$GITHUB_OUTPUT"
+        echo "本次发布版本：v$version"
+
+    # 把算出来的版本写进 mod.hjson，游戏内 Mod 列表显示的版本号才和 release 一致。
+    # 只改 CI 里的那份检出副本，仓库里的 mod.hjson 始终是 1.0.0。
+    - name: Stamp mod.hjson
+      run: |
+        sed -i -E 's/^version:.*/version: "${{ steps.version.outputs.version }}"/' mod.hjson
+        grep -n '^version:' mod.hjson
+
     - name: Set up PATH
       run: |
         echo "${ANDROID_HOME}/build-tools/34.0.0" >> $GITHUB_PATH
+
     - name: Set up JDK 17
       uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: 17
+
     - name: Build mod jar
       run: |
         chmod +x ./gradlew
         ./gradlew deploy
-    - name: Upload release artifact
+
+    - name: Publish release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release upload "${{ github.event.release.tag_name }}" \
-          "build/libs/${{ github.event.repository.name }}.jar" \
-          --clobber
+        set -euo pipefail
+        tag="${{ steps.version.outputs.tag }}"
+        jar="build/libs/${{ github.event.repository.name }}.jar"
+        ls -l "$jar"
+        gh release create "$tag" "$jar" \
+          --target "${{ github.sha }}" \
+          --title "$tag" \
+          --generate-notes
