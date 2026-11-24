@@ -9,6 +9,7 @@ import arc.scene.ui.Image;
 import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
 import arc.struct.Seq;
+import arc.util.Log;
 import mindustry.Vars;
 import mindustry.game.Schematic;
 import mindustry.gen.Icon;
@@ -55,6 +56,9 @@ public class BarSchematicPicker extends BarWindow{
     private float hoverTime, hideTime, pollTime;
     /** 搜索防抖：连续打字时不重建网格，停手 0.2 秒才理一次。 */
     private float searchDelay;
+
+    /** 拖动改过尺寸、还没落盘。关窗时若仍为 true 就补存一次（见 remove()）。 */
+    private boolean sizeDirty;
 
     private int shownLibrary = -1, shownTagCount = -1;
     /** 当前网格排了几列。列数变了才重建卡片，拖动缩放时不至于每像素重建一次。 */
@@ -204,11 +208,22 @@ public class BarSchematicPicker extends BarWindow{
     @Override
     protected void onResize(float w, float h){
         hidePopup();
+        sizeDirty = true;
     }
 
-    /** 松手才落盘：尺寸按逻辑单位存，换屏幕/换 UI 缩放后仍然合适。 */
+    /** 松手：尺寸按逻辑单位存进字段，落盘由 BarWindow.captureAnchor(true) 紧接着做。 */
     @Override
     protected void onResizeEnd(){
+        writeSize();
+        sizeDirty = false;
+    }
+
+    /**
+     * 把当前尺寸写进 config 字段（逻辑单位，换屏幕/换 UI 缩放后仍然合适）。
+     *
+     * 单位换算用 u(1)，与构造里的 storedW()/storedH() 正好互为逆运算。
+     */
+    private void writeSize(){
         float lw = getWidth() / BarTheme.u(1f), lh = getHeight() / BarTheme.u(1f);
         if(BarTheme.mobile){
             BarConfig.pickerWidthMobile = lw;
@@ -217,7 +232,7 @@ public class BarSchematicPicker extends BarWindow{
             BarConfig.pickerWidth = lw;
             BarConfig.pickerHeight = lh;
         }
-        BarConfig.save();
+        Log.info("[schembar] picker size saved: @x@ (logical @x@)", getWidth(), getHeight(), lw, lh);
     }
 
     /** 恢复默认：位置和尺寸一起清掉，下次打开回到屏幕正中、默认大小。 */
@@ -512,6 +527,13 @@ public class BarSchematicPicker extends BarWindow{
 
     @Override
     public boolean remove(){
+        // 拖动中途被关掉（触摸被系统取消、点到卡片、按 ×）时 resized() 不会来，这里补一次，
+        // 避免“拖过但没记住”
+        if(sizeDirty){
+            writeSize();
+            sizeDirty = false;
+            BarConfig.save();
+        }
         hidePopup();
         if(overview != null){
             overview.remove();

@@ -118,12 +118,18 @@ public class BarResizeGrip extends Element{
         float gap = BarMetrics.gripDotGap();
         float margin = BarMetrics.gripDotMargin();
 
+        // 窗口这棵树是 transform=false 的：Group.drawChildren() 不做矩阵变换，而是把父元素的 x/y
+        // 临时加到每个子元素的 x/y 上再画（arc Group.java 的 "No transform for this group" 分支）。
+        // 所以自定义 draw() 必须自己把 x/y 加进坐标；只写局部坐标会画到舞台原点（屏幕左下角）。
         Draw.color(BarTheme.line.r, BarTheme.line.g, BarTheme.line.b, (dragging ? 1f : 0.75f) * a);
         for(int row = 0; row < dots; row++){
-            float y0 = margin + row * (dot + gap);
+            float cy = margin + dot * 0.5f + row * (dot + gap);
             for(int col = 0; col < dots; col++){
-                float x0 = width - margin - dot - col * (dot + gap);
-                Fill.crect(x0, y0, dot, dot);
+                float cx = width - margin - dot * 0.5f - col * (dot + gap);
+                // 只画落在命中三角里的点：左上角那几个点了没反应，画出来会误导
+                if((width - cx) + cy > gripSize) continue;
+
+                Fill.crect(x + cx - dot * 0.5f, y + cy - dot * 0.5f, dot, dot);
             }
         }
         Draw.reset();

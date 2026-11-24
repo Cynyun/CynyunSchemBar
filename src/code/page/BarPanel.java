@@ -199,7 +199,7 @@ public class BarPanel extends BarWindow implements BarPickerHost{
             BarConfig.mainWidth = lw;
             BarConfig.mainHeight = lh;
         }
-        BarConfig.save();
+        // 写盘统一由 BarWindow 的 captureAnchor(true) 做，这里只填字段（顺序见 resized()）
     }
 
     // ------------------------------------------------------------------ 重建

@@ -56,9 +56,12 @@ public abstract class BarWindow extends Table{
 
                 @Override
                 public void resized(){
-                    // 松手才写盘：拖动过程中每像素 save() 会把磁盘打成筛子
-                    captureAnchor(true);
+                    // 松手才写盘：拖动过程中每像素 save() 会把磁盘打成筛子。
+                    // 顺序有讲究：先让子类把新尺寸写进 config 字段，再由 captureAnchor 算位置并统一
+                    // save()。反过来的话文件里先落的是旧尺寸——只要后一步没执行（触摸被取消、
+                    // 拖动中关窗），这次缩放就白做了。
                     onResizeEnd();
+                    captureAnchor(true);
                 }
             });
         }
@@ -95,7 +98,7 @@ public abstract class BarWindow extends Table{
     protected void onResize(float w, float h){
     }
 
-    /** 用户松手：子类在这里把逻辑尺寸写进 config。 */
+    /** 用户松手：子类在这里把逻辑尺寸写进 config 字段（不要自己 save，紧接着 captureAnchor 会写盘）。 */
     protected void onResizeEnd(){
     }
 
